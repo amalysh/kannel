@@ -1,0 +1,469 @@
+2005-05-10  Alexander Malysh <amalysh at kannel.org>
+    * gw/smsc/smsc_ois.c, gwlib/gwmem-check.c, test/test_regex.c: fixed coompiler
+      warnings.
+    * gwlib/conn.c: fixed typo '___inline' that cause build to fail.
+
+2005-05-09  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/conn.c, gwlib/dbpool.c, gwlib/gw-prioqueue.c, gwlib/gwmem-check.c,
+      gwlib/http.c, wap/wtls_pdu.h: changes that to make ISO strict compilers
+      happy. Mostly: 'inline' -> '__inline'.
+
+2005-05-09  Alexander Malysh <amalysh at kannel.org>
+    * test/test_ppg.c: killled wait variable and use wait_seconds instead.
+
+2005-05-09  Alexander Malysh <amalysh at kannel.org>
+    * test/test_hmac.c: fixed build error when no openssl available.
+
+2005-05-06  Alexander Malysh <amalysh at kannel.org>
+    * gw/smsc/smsc_at.c: build fixes for strict compillers.
+
+2005-05-06  Alexander Malysh <amalysh at kannel.org>
+    *  gwlib/octstr.h: fixed compiler warnings for strict compilers (e.g. HP-UX).
+
+2005-05-05  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/gwlib.c: fixed segfault while shutdown when memcheck used.
+
+2005-05-05  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/dbpool.c: drop 'inline' from function declaration. They can't
+      inlined anyway but produce errors with strict ansi compilers.
+
+2005-05-05  Alexander Malysh <amalysh at kannel.org>
+    * configure.in, configure: fixed openssl detection for Mac OS X.
+
+2005-04-22  Stipe Tolj  <stolj@wapme.de>
+    * test/test_hmac.c: fixed compiler error of the automatic compilation test, 
+      due to usage of HMAC_CTX_cleanup, whereas geodude still runs an openssl 
+      version with the deprecated "old" HMAC_cleanup.
+      
+2005-04-21  Stipe Tolj  <stolj@wapme.de>
+    * test/test_octstr_dump.c: added binary dump to file for files that contain
+      hex values. Can be used to convert hex value blocks to binary files.
+    * test/test_hmac.c: added file that implements HMAC calculation via openssl
+      library. HMAC is used in authentication for OMA Prov documents.
+      
+2005-04-14  Alexander Malysh <amalysh at kannel.org>
+    * gw/smsbox.c, gw/wapbox.c, gwlib/cfg.def, gwlib/http.[ch], test/test_http.c,
+      test/test_xmlrpc.c, doc/userguide/userguide.xml: applied patch that adds
+      the 'http-proxy-exceptions-regex' option to the wapbox and smsbox config files.
+      This added to allow a regex like "^https" to skip the HTTP proxy for SSL connections.
+      Obviously it can also be used for more than just that.
+      Thanks to Jonathan Houser <jhouser at wirelessonenet.com>.
+      [Msg-Id: <425D26A4.80401@wirelessonenet.com>]
+
+2005-04-08  Stipe Tolj  <stolj@wapme.de>
+    * gwlib/md5.c: fixing bug #207, causing md5() to return corrupted values
+      since we assumed digest is a NULL-terminated C string, which is of
+      course not the case in gernal. Thanks to Vincenzo for reporting this.
+       
+2005-04-07  Stipe Tolj  <stolj@wapme.de> 
+    * radius/radius_[acct|pdu].c: fixing bug #208, which caused a wrong 
+      computing of the MD5 authenticator of the NAS acct packet. Thanks a
+      lot to Vincenzo <morellov@tin.it> for bug report and also fix. This
+      was a very stupid interpretation of the RFC2866 by me.
+    
+2005-04-07  Stipe Tolj  <stolj@wapme.de> 
+    * gwlib/http.c: fixing bug #213 breaking HTTP response handling when there
+      has been a response header 'Content-Length: 0' given. Thanks to Jonathan
+      for this report and provding also a patch for the problem.
+      [Msg-Id: <42541321.2080102@wirelessonenet.com>]
+
+2005-04-01  Stipe Tolj  <stolj@wapme.de> 
+    * test/wapproxy.c: added option -p for UDP port of wapproxy to list to.
+      Can be used to proxy WDP packets on the same machine/interface. 
+
+2005-03-29  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/http.c: fixed horrible bug in 'http_cgivar_dump' that
+      used 'gwlist_extract_first' instead of 'gwlist_get'.
+
+2005-03-28  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/dbpool.h: fixed compiler warnings.
+
+2005-03-22  Stipe Tolj  <stolj@wapme.de> 
+    * wmlscript/wsstdlib.[ch]: updated and added latest WTAI functions as 
+      defined in WAP-268-WTAI, WAP-269-WTAIIS136, WAP-270-WTAIPDC, 
+      WAP-228-WTAIIS95-20010908 and WAP-255-WTAIGSM. Thanks to Dermot Wrycraft
+      <Dermot.Wrycraft@magdalene.co.uk> for providing the hint for update.
+    
+2005-03-21  Stipe Tolj  <stolj@wapme.de> 
+    * gwlib/octstr.{ch]: adding octstr_str_case_compare() to allow insensitive
+      string compare with const char. Patch by Fred <fred@5thfinger.com>.
+      [Msg-Id: <020f01c51acf$98f1c0e0$0401a8c0@FRED4>]
+      
+2005-03-21  Stipe Tolj  <stolj@wapme.de> 
+    * gwlib/http.c: fixing server and client thread state variables in order to 
+      make modules usable in other code where http_init() and http_shutdown()
+      is called several times. Thanks to Paul for pointing to this.
+      [Msg-Id: <F808656A265C82458A21CCA505A2B12E3E3B87@MACKEN.anam.com>]
+
+2005-03-17  Alexander Malysh <amalysh at kannel.org>
+    * gw/smsc/smsc_smpp.c: applied patch that implements relaxed source_addr
+      checks in SMPP and adds additionally error reporting why kannel rejected
+      this MO.
+      [Msg-Id: <d0s6c4$1mf$1@sea.gmane.org>]
+
+2005-03-15  Stipe Tolj  <stolj@wapme.de> 
+    * configure[.in]: moved required libxml2 version check from 2.2.5 to
+      2.2.7, since we use the macro LIBXML_DOTTED_VERSION in gw/shared.c and 
+      this is available since 2.2.7. 
+
+2005-03-09  Alexander Malysh <amalysh at kannel.org>
+    * gw/bb_smscconn.c, gw/smscconn.c: fixed memleaks in handling of
+      splitted messages.
+
+2005-03-08  Stipe Tolj  <stolj@wapme.de> 
+    * wap/wtp_resp.h: adding patch from Igor to support larger objects
+      via WTP SAR segments. Thanks to Igor for providing the patch and
+      production environment tests and Mindaugas Riauba <mind@bi.lt> for
+      picking this item up again for discussion.
+      [Msg-ID: <8BCBF9DB739F034B87FE7C7D30EAE55C01A0F34B@hqex2k.francoudi.com>]
+
+2005-03-07  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/http.c: (Client Part) fixed race condition while destroing
+      Connection. In order to not trigger RC we must first explicit
+      unregister connection from FDSet (because this operation is locked)
+      and then destroy Connection.
+      (Server Part) fixed race condition that caused double free of a
+      HTTPClient struct while closing specified listen port.
+
+2005-03-07  Alexander Malysh <amalysh at kannel.org>
+    * gw/dlr_pgsql.c: attached patch adds again 'LIMIT 1' to dlr_pgsql
+      because after fix for #190 we will delete and update to much rows
+      in postgresql.
+      [Msg-Id: <cv04cu$dv3$1@sea.gmane.org>]
+
+2005-03-07  Alexander Malysh <amalysh at kannel.org>
+    * gw/wap-appl.c: added call to 'radius_acct_get_msisdn' back.
+      Thanks to Jonathan for reporting this.
+
+2005-03-07 Aarno Syvanen <as@gni.ch>
+    * doc/userguide/userguide.xml:File schemes in settings and bookmark
+      examples were wrong. Fixed this. Thanks to Davy for reporting.
+
+2005-03-06  Alexander Malysh <amalysh at kannel.org>
+    * gw/bb_store.c, gw/wap-appl.c: fixed compiler warnings.
+
+2005-03-06  Alexander Malysh <amalysh at kannel.org>
+    * gw/wap-appl.c: Fix empty device_headers with request_headers == NULL
+      and session_headers != NULL and small memory leak with connection-oriented wap
+      Thanks to "Paul P Komkoff Jr <i at stingr.net>" for the patch.
+      [Msg-Id: <20050306212423.GA26532@stingr.stingr.net>]
+
+2005-03-04  Stipe Tolj  <stolj@wapme.de> 
+    * gw/wap-appl.c: adding a NULL check causing a PANIC while dumping the
+      IP in the fetch info() statement. How can this be NULL, since we 
+      pass it the same way to alog()?. Tbanks again to Jonathan for this.
+
+2005-03-04  Stipe Tolj  <stolj@wapme.de> 
+    * gwlib/http.c: fixing bug #205 (leaking FDs). Due to an unhandled error
+      state we would not change the HTTPEntity state and the conn ist not
+      closed. Thanks to Jonathan for reporting this and Alex for the fix.
+
+2005-03-04  Stipe Tolj  <stolj@wapme.de> 
+    * gw/wap-appl.c: added <ip:port> output in info() log line for fetching
+      the requested client URL. Thanks to Jonathan for this.
+      [Msg-ID: <422880B3.90805@wirelessonenet.com>]
+
+2005-03-02  Stipe Tolj  <stolj@wapme.de> 
+    * doc/userguide/userguide.xml: fixed some typos and added sections for
+      URL escape codes %m and %M for sms-service group.
+    * gw/urltrans.c: adding URL escape codes %m for mclass and %M for mwi
+      parameters of our Msg structure. Generally this shall allow to use
+      smsc_http (kannel mode) interface to have MO transported transparently
+      up via sms-service to an upstream smsbox instance for further processing.
+
+2005-03-01 Andreas Fink <afink@gni.ch>
+    * gw/smsc/smsc_at.c: be more friendly to modems which
+      are not ready after opening serial port or after AT&F.
+      Helps Ericsson T300
+
+2005-03-01 Aarno Syvanen <as@gni.ch>
+    * gw/smsc/smsc_at.c: Fixed error messages in "slow modem start patch"
+
+2005-03-01  Stipe Tolj  <stolj@wapme.de> 
+    * configure[.in], gw-config.h.in, gwlib/http.c: added option to make
+      HTTP/1.1 keep-alive support disabled via optional configure switch 
+      --disable-keepalive. Thanks to Jonathan Hauser 
+      <jhouser@wirelessonenet.com> for this patch.
+      [Msg-ID: <421B8103.7070301@wirelessonenet.com>]
+
+2005-03-01  Stipe Tolj  <stolj@wapme.de> 
+    Portability enhancement for non-gcc compilers, no logic change.
+    * gw/smsc/smsc_smpp.c: changed gcc specific magic macro __PRETTY_FUNCTION_
+      to __func__ that is more generic, because of gw-config.h.in macro
+      rule used.
+    * readius/radius_pdu.c: remove void NULL void call and enclose into an
+      if statement.
+      Thanks to Mike Bristrow <mike@urgle.com> for the patch.
+      [Msg-ID: <20050218120010.GA17561@urgle.com>]
+
+2005-03-01  Stipe Tolj  <stolj@wapme.de> 
+    * configure[.in]: added support to find docbook.dsl file on Debian 
+      unstable. Thanks to Benjamin for this patch.
+      [Msg-ID: <20050219161644.GA938@xaos.realthought.net>]
+
+2003-02-23 Aarno Syvanen <as@gni.ch>
+    * doc/userguide/userguide.xml: changed the added si doc
+      to minimum one, so that users can minimize the 
+      generated si message.
+
+2005-02-20 Aarno Syvanen <as@gni.ch>
+    * doc/userguide/userguide.xml: added an example si document
+    * gw/smsbox.c: ppg dlr-url should work now when it is a
+      configuration variable. Fix suggested by Davy Chan
+    * gw/wapbox.c: reload (SIGHUP) does not change value of 
+      configuration variable concatenation
+    * gw/smsc/smsc_at.c: Handle a very slow initialisation. This is
+      a patch by Andreas.
+    * test/test_ppg.c: Added two new push header, used to ask
+    * delivery reports
+
+2005-02-18  Stipe Tolj  <stolj@wapme.de> 
+    * gw/wap-appl.c, wap/cookies.c, wap/wsp_session.c: fixing an assertion
+      PANIC, while passing a NULLed List* to cookies.c:add_cookie_to_cache().
+      We now gwlist_create() the cookies list inside machine_create().
+      Thanks to Jacob Dalsgaard <jakob.dalsgaard@cybercomgroup.com> for
+      reporting this and Davy for pushing the "recalling"-button.
+      [Msg-ID: <4018EB52.306@cybercomgroup.com>]
+
+2005-02-18  Stipe Tolj  <stolj@wapme.de> 
+    * wap/wtp.c: fixing bug #197, causing wapbox to PANIC on truncated WDP
+      datagrams. Thanks to Jonathan Houser <jhouser@wirelessonenet.com> for
+      reporing this bug in ML users@kannel.org.
+      [Msg-ID: <4214F128.4090007@wirelessonenet.com>]
+
+2005-02-17  Stipe Tolj  <stolj@wapme.de> 
+
+    * test/test_radius_pdu.c: some minor issues, like usage display
+      etc.
+
+2005-02-17  Alexander Malysh <amalysh at kannel.org>
+    * gw/smsc/smsc_smpp.c: fixed typo while setting submit_sm.data_coding.
+      Thanks to Davy Chan <chandave at cs.ust.hk> for the patch.
+      [Msg-Id: <20050217104340.GF6920@exras.cs.ust.hk>]
+
+2005-02-15  Stipe Tolj  <stolj@wapme.de> 
+    * configure[.in]: fixing bug #191. Thanks to Sefan Cars and Noritoshi
+      Demizu <demizu@dd.iij4u.or.jp> for reporting and resolving this issue
+      for the FreeBSD platform.
+
+2005-02-15  Stipe Tolj  <stolj@wapme.de> 
+    * gwlib/http.c: fixing bug #68 reported by Aarno. Thanks to Rune Saetre 
+      <rune.saetre@netcom-gsm.no> for providing a patch. Applied in variation
+      of the Rune's patch, in order to reduce code.
+      [Msg-ID: <Pine.LNX.4.58.0502150957370.9546@pingle.local.rsnet>]
+
+2005-02-11  Stipe Tolj  <stolj@wapme.de> 
+    * wap/wsp_headers.c: fixing a generic problem for empty WSP header values.
+      This was initially reported by Paul for the Siemens SX1 device.
+      [Msg-ID: <20050118210227.GA12497@stingr.sgu.ru>]
+      Patch applied is more generic then the one from Paul.
+      [Msg-ID: <41F8D8E5.10400@tolj.org>]
+
+2005-02-11  Stipe Tolj  <stolj@wapme.de> 
+    * */*: update LICENSE preamble block to 2005.
+    * [various]: update personal email reference to latest address
+
+2005-02-11  Stipe Tolj  <stolj@wapme.de> 
+    * gw/wap-appl.c: added support to log MSISDN of a calling client device
+      provided via our RADIUS acct proxy. Thanks to Paul for this.
+      [Msg-ID: <20050211123830.GW14917@stingr.sgu.ru>]
+
+2005-02-10  Stipe Tolj  <stolj@wapme.de> 
+    * gw/dlr_pgsql.c: fixing bug #190, where PostgreSQL does not take LIMIT
+      for DELETE and UPDATE operations. WARNING: This causes a possible loose
+      of uniqueness, since only timestamp and smsc-id is used as unique id.
+      Which means we will drop *all* messages of a particular second, then
+      at least one of them get's a DLR. This needs a fix in the semantical
+      issue on how DLR resolving is done.
+      Reported by Johann du Preez <johann@profile.co.za>. 
+      [Msg-ID: <000b01c509bd$92e1aee0$bf00a8c0@Pinotage>]
+
+2005-02-10  Stipe Tolj  <stolj@wapme.de> 
+    * doc/examples/modems.conf: added modemds group for SonyEricsson GR47 GSM 
+      modem module. Thanks to Matti Ärmänen <matti.armanen@sci.fi> for this.
+      [Msg-ID: <421C8F56.2050502@sci.fi>]
+
+2005-02-10  Stipe Tolj  <stolj@wapme.de> 
+    * doc/userguide/userguide.xml: minor typo fix.
+
+2005-02-01  Alexander Malysh <amalysh at kannel.org>
+    * checks/check_list.c, gw/bb_alog.c, gw/bb_boxc.c, gw/bb_http.c,
+      gw/bb_smscconn.c, gw/bb_store.c, gw/bb_udp.c, gw/bearerbox.c,
+      gw/dlr_mem.c, gw/dlr_mysql.c, gw/dlr_oracle.c, gw/dlr_pgsql.c,
+      gw/dlr_sdb.c, gw/heartbeat.c, gw/mime_decompiler.c, gw/msg.h,
+      gw/numhash.c, gw/sms.c, gw/smsbox.c, gw/smscconn.c, gw/urltrans.c,
+      gw/wap-appl.c, gw/wap-maps.c, gw/wap_push_ota.c, gw/wap_push_pap_mime.c,
+      gw/wap_push_ppg.c, gw/wap_push_ppg_pushuser.c, gw/wap_push_ppg_pushuser.h,
+      gw/wapbox.c, gw/wml_compiler.c, gw/xml_shared.c, gw/smsc/smsc_at.c,
+      gw/smsc/smsc_cgw.c, gw/smsc/smsc_cimd2.c, gw/smsc/smsc_fake.c, 
+      gw/smsc/smsc_http.c, gw/smsc/smsc_oisd.c, gw/smsc/smsc_smasi.c,
+      gw/smsc/smsc_smpp.c, gw/smsc/smsc_soap.c, gw/smsc/smsc_wrapper.c,
+      gwlib/accesslog.c, gwlib/cfg.c, gwlib/dbpool.c, gwlib/dbpool_oracle.c,
+      gwlib/dbpool_pgsql.c, gwlib/dict.c, gwlib/fdset.c, gwlib/gw-rwlock.c,
+      gwlib/gwthread-pthread.c, gwlib/http.c, gwlib/list.c, gwlib/list.h,
+      gwlib/log.c, gwlib/mime.c, gwlib/octstr.c, gwlib/octstr.c.debug, gwlib/octstr.h,
+      gwlib/octstr.h.debug, gwlib/parse.c, gwlib/semaphore.c, gwlib/utils.c, gwlib/xmlrpc.c,
+      test/drive_wapbox.c, test/fakesmsc.c, test/test_cimd2.c, test/test_dbpool.c,
+      test/test_headers.c, test/test_http.c, test/test_http_server.c, test/test_mime.c,
+      test/test_ppg.c, test/test_smsc.c, test/test_xmlrpc.c, test/wapproxy.c, utils/mtbatch.c,
+      wap/cookies.c, wap/timers.c, wap/wap.c, wap/wsp_caps.c, wap/wsp_headers.c, 
+      wap/wsp_push_client.c, wap/wsp_push_client_states.def, wap/wsp_server_method_states.def,
+      wap/wsp_server_push_states.def, wap/wsp_server_session_states.def, wap/wsp_session.c,
+      wap/wsp_unit.c, wap/wtls-secmgr.c, wap/wtls.c, wap/wtls_pdu.c, wap/wtls_pdusupport.c,
+      wap/wtls_state-decl.h, wap/wtls_statesupport.c, wap/wtp.c, wap/wtp_init.c, wap/wtp_pdu.c,
+      wap/wtp_resp.c, wap/wtp_tid.c: renamed all occurence of 'list_XXX' to 'gwlist_XXX' thus
+      fixed bug #32.
+
+2005-02-01  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/fdset.[ch]: In order to efficient handle timeouts and don't
+      start "yet another thread" we use already available fdset's threads.
+      With this patch applied we will have a possibility to set timeout 
+      for all filedescriptors in fdset and after timeout elapsed registered
+      callback function with POLLERR as event will be called.
+    * gwlib/http.c: changes related to server/client idle timeout and removed
+      some code duplcation.
+      [Msg-Id: <ct8rnc$pqp$1@sea.gmane.org>]
+
+2005-01-28  Stipe Tolj  <stolj@wapme.de> 
+    * doc/userguide/userguide.xml: fixed personal reference for Kalle.
+
+2005-01-28  Kalle Marjola  <kmarjola@enpocket.com>
+    * doc/userguide/userguide.xml: added HTTP status codes and contents
+      to sendsms entry
+	
+2005-01-28  Kalle Marjola  <kmarjola@enpocket.com>
+    * gw/smsbox.c: in sendsms, wait for bearerbox reply before
+      replying to HTTP client. NOTE: compatbility breaker if the
+      HTTP client is reading the reply content, plus Kannel can now
+      return new HTTP status codes. Use 'immediate-sendsms-reply = true'
+      in the smsbox group to enable old behaviour.
+	
+    * gwlib/http.h, gwlib/cfg.def, doc/userguide/userguide.xml: 
+      relevant changes
+
+2005-01-28  Stipe Tolj  <stolj@wapme.de> 
+    * doc/userguide/userguide.xml: fixed personal email reference.
+
+2005-01-28  Stipe Tolj  <stolj@wapme.de> 
+    * test/hello.wml: fixed obviously wml compiling break for 
+      checks/check_fakewap.sh.
+
+2005-01-28  Stipe Tolj  <stolj@wapme.de> 
+    * checks/check_http.sh, utils/run-checks: moving shell from /bin/sh to
+      /bin/bash.
+    * checks/check_ppg.sh: moving file condition check from -e (exists) to
+      -f (file exists and is regular). 
+      Fixing bug #168. Thanks to Stefan Radman <Stefan.Radman@CTBTO.ORG>.
+      [Msg-ID: <20050120.152742.094138.593FCF86BC282B0082761599C0E8DE79@CTBTO.ORG>]
+
+2005-01-24  Alexander Malysh <amalysh at kannel.org>
+    * gw/urltrans.c: fixed bug #174.
+      Thanks to chandave for provided patch.
+
+2005-01-23  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/http.c: apllied patch that includes some http server fixes:
+      - don't close listen filedescriptor when accept failed (that can be caused
+        bei client just now disconnected or network error)
+      - added 'active_list' that saves all active http clients and so while
+        shutdown all active clients can be disconnected gracefully (w/o fdset
+        warning about active entries) and when listen port removed all active
+        clients for this port could be disconnected.
+      [Msg-Id: <csluqr$bah$1@sea.gmane.org>]
+
+2005-01-23  Alexander Malysh <amalysh at kannel.org>
+    * gw/bb_boxc.c: applied patch that change behaviour in communication
+      thread creation. With this patch threads are created only after successful
+      accept and so eliminate possible DOS.
+
+2005-01-21  Alexander Malysh <amalysh at kannel.org>
+    * gw/smsc/smsc_smpp.c: fixed bug #165. we now always send validity &
+      deferred time in UTC.
+
+2005-01-21  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/gwmem-check.c: added backtrace support. w/o backtrace is this
+      module really hard to use.
+      [Msg-Id: csodge$rfm$1@sea.gmane.org>]
+
+2005-01-20  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/octstr.c: fixed segfault and compiler warnings on a x86_64 (Intel Xeon).
+    * gw/smsc/smsc_at.c: fixed compiler warnings on a 64bite OS.
+      Thanks to Ilan Aelion <ilan.aelion at dimoco.at>.
+      [Msg-Id: <200412311337.12104.ilan.aelion@dimoco.at>]
+
+2005-01-19  Alexander Malysh <amalysh at kannel.org>
+    * configure.in, configure: fixed bug #178 and similar bugs.
+      Additionaly fixed indentation.
+      Thanks to sradman for bug report.
+
+2005-01-19  Alexander Malysh <amalysh at kannel.org>
+    * Makefile.in: fixed bug #173.
+      Thanks to joergent.
+
+2004-12-23  Alexander Malysh <amalysh at kannel.org>
+    * contrib/kannel-monitor/index.php: and yet another one-liner.
+      Fixed a case when there is a bearerbox attached and no smsbox's
+      attached to it, the bearerbox doesn't appear in the Box Connections.
+      This is due to the test being an empty() test with a few spaces
+      in the variable $x... Doing a trim solved this..
+      Thanks to Bill Brigden <bill at baghead.co.uk>.
+      [Msg-Id: <200412231224.iBNCOU008238@bill.aqvs.co.uk>]
+
+2004-12-23  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/http.c: applied 'http client timeouts part1 (v4)' patch.
+      This patch fixes a problem with dead connections in http client
+      connection pool. It's only a first part of fixes that we need
+      (we still need to kill inactive connection after timeout expired).
+      How it works:
+      1) before putting connection into connection pool register dummy callback
+      2) if dummy callback called (we will receive error poll event) check if
+         connection still ok and if not destroy it
+      3) before return connection from pool, unregister dummy callback
+
+2004-12-23  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/conn.[ch]: added 'conn_register_real' that takes callback data
+      and data-destroyer function pointer. When conn_destroy/conn_unregister
+      called and Connection has data_destroyer fn-pointer that will be called
+      in order to destroy callback data. When conn_register on already
+      registered data called that if old-data != new-data then data-destroyer
+      function called in order to destroy previous callback data.
+      Additionaly some locking fixes.
+
+2004-12-23  Alexander Malysh <amalysh at kannel.org>
+    * contrib/kannel-monitor/index.php: applied patch that should fix
+      a bug when dead bearerbox causes monitor to freeze.
+      Thanks to Agastiya S. Mohammad <egi at sinaptix.com>.
+      [Msg-Id: <1103539890.3803.309.camel@localhost.localdomain>]
+
+2004-12-15    <kmarjola@enpocket.com>
+
+    * gw/bb_store.c: removed -Wall warnings
+    * gw/smskannel.conf: resumed global-sender, otherwise make check
+      does not work
+
+2004-12-13    <kmarjola@enpocket.com>
+
+    * gw/bb_store.c: use Dict to make things much more faster. Also
+      introduce 'store-dump-freq' to set up how often the situation
+      is stored to file
+    * gw/bearerbox.*, gwlib/cfg.def, doc/userguide/userguide.xml: 
+      relevant changes
+
+    * test/fakesmsc.c: update usage to reflect changed command line
+      argument (-p to -r)
+
+    * gw/smskannel.conf: updated to include much more explanations
+      and fixed above thing
+	
+2004-11-30    <kmarjola@enpocket.com>
+
+    * gwlib/conn.c: Bug fix: try not to read negative number of bytes
+    * gwlib/http.c: Bug fix: close connection with bad content-length
+
+2004-11-29  Alexander Malysh <amalysh at kannel.org>
+    * gwlib/charset.c: fixed bug in 'charset_convert' that could cause
+      converted string to be truncated.
+      Thanks to "Pommnitz Joerg" for the patch.
+      [Msg-Id: 4D93AAF95CB5A64E8F622EC796ECF5AC3FC3DF@exil.condat.de]
+
+2004-11-23  Stipe Tolj  <stolj@wapme.de> 
+    * Making stable release 1.4.0.

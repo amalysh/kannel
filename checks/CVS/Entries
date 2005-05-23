@@ -1,0 +1,17 @@
+/.cvsignore/1.5/Tue Jan 30 23:07:48 2001//
+/check_compiler.sh/1.1/Mon Mar 19 18:30:53 2001//
+/check_counter.c/1.6/Fri Feb 11 15:35:47 2005//
+/check_date.c/1.6/Fri Feb 11 15:35:47 2005//
+/check_fakesmsc.sh/1.7/Fri Jun 28 12:06:56 2002//
+/check_fakewap.sh/1.8/Thu Jul  4 11:01:36 2002//
+/check_headers.sh/1.2/Thu Jul  8 23:41:15 2004//
+/check_http.sh/1.11/Fri Jan 28 02:14:31 2005//
+/check_httpsmsc_kannel.sh/1.2/Thu Sep 27 13:19:56 2001//
+/check_ipcheck.c/1.5/Fri Feb 11 15:35:47 2005//
+/check_list.c/1.11/Fri Feb 11 15:35:47 2005//
+/check_octstr.c/1.7/Fri Feb 11 15:35:47 2005//
+/check_ppg.sh/1.12/Fri Jan 28 02:14:31 2005//
+/check_sendsms.sh/1.13/Wed Jul 14 10:31:25 2004//
+/check_smpp.sh/1.5/Thu Feb 13 10:35:26 2003//
+/test_dates/1.1/Thu Sep 28 12:23:27 2000//
+D
