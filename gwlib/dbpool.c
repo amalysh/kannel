@@ -69,13 +69,12 @@
 #include "dbpool.h"
 #include "dbpool_p.h"
 
-
 #ifdef HAVE_DBPOOL
-
 
 #include "dbpool_mysql.c"
 #include "dbpool_oracle.c"
 #include "dbpool_sqlite.c"
+#include "dbpool_sqlite3.c"
 #include "dbpool_sdb.c"
 #include "dbpool_pgsql.c"
 
@@ -89,6 +88,7 @@ static void dbpool_conn_destroy(DBPoolConn *conn)
 
     gw_free(conn);
 }
+
 
 /*************************************************************************
  * public functions
@@ -126,6 +126,11 @@ DBPool *dbpool_create(enum db_type db_type, DBConf *conf, unsigned int connectio
             p->db_ops = &sqlite_ops;
             break;
 #endif
+#ifdef HAVE_SQLITE3
+        case DBPOOL_SQLITE3:
+            p->db_ops = &sqlite3_ops;
+            break;
+#endif
 #ifdef HAVE_SDB
         case DBPOOL_SDB:
             p->db_ops = &sdb_ops;
@@ -148,6 +153,7 @@ DBPool *dbpool_create(enum db_type db_type, DBConf *conf, unsigned int connectio
 
     return p;
 }
+
 
 void dbpool_destroy(DBPool *p)
 {
@@ -331,6 +337,7 @@ unsigned int dbpool_check(DBPool *p)
     return n;
 }
 
+
 int dbpool_conn_select(DBPoolConn *conn, const Octstr *sql, List *binds, List **result)
 {
     if (sql == NULL || conn == NULL)
@@ -342,6 +349,7 @@ int dbpool_conn_select(DBPoolConn *conn, const Octstr *sql, List *binds, List **
     return conn->pool->db_ops->select(conn->conn, sql, binds, result);
 }
 
+
 int dbpool_conn_update(DBPoolConn *conn, const Octstr *sql, List *binds)
 {
     if (sql == NULL || conn == NULL)
@@ -352,4 +360,5 @@ int dbpool_conn_update(DBPoolConn *conn, const Octstr *sql, List *binds)
 
     return conn->pool->db_ops->update(conn->conn, sql, binds);
 }
+
 #endif /* HAVE_DBPOOL */

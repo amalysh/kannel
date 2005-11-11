@@ -118,6 +118,8 @@ SINGLE_GROUP(core,
     OCTSTR(dlr-storage)
     OCTSTR(maximum-queue-length)
     OCTSTR(sms-incoming-queue-limit)
+    OCTSTR(sms-resend-freq)
+    OCTSTR(sms-resend-retry)
 )
 
 
@@ -488,8 +490,9 @@ MULTI_GROUP(modems,
 MULTI_GROUP(mysql-connection,
     OCTSTR(id)
     OCTSTR(host)
-    OCTSTR(mysql-username)
-    OCTSTR(mysql-password)
+    OCTSTR(port)
+    OCTSTR(username)
+    OCTSTR(password)
     OCTSTR(database)
     OCTSTR(max-connections)
 )
@@ -514,6 +517,7 @@ MULTI_GROUP(sdb-connection,
 MULTI_GROUP(pgsql-connection,
     OCTSTR(id)
     OCTSTR(host)
+    OCTSTR(port)
     OCTSTR(username)
     OCTSTR(password)
     OCTSTR(database)

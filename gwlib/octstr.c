@@ -1560,13 +1560,13 @@ List *octstr_split(const Octstr *os, const Octstr *sep)
     pos = 0;
     seplen = octstr_len(sep);
 
-    while ((next = octstr_search(os, sep, pos)) != -1) {
-	gwlist_append(list, octstr_copy(os, pos, next - pos));
-	pos = next + seplen;
+    while ((next = octstr_search(os, sep, pos)) > 0) {
+        gwlist_append(list, octstr_copy(os, pos, next - pos));
+        pos = next + seplen;
     }
     
     if (pos < octstr_len(os))
-    	gwlist_append(list, octstr_copy(os, pos, octstr_len(os)));
+        gwlist_append(list, octstr_copy(os, pos, octstr_len(os)));
     
     return list;
 }
@@ -2372,8 +2372,8 @@ octstr_recode (Octstr *tocode, Octstr *fromcode, Octstr *orig)
 	goto cleanup_and_exit;
     }
 
-    if ((octstr_case_compare(fromcode, octstr_imm ("utf-8")) != 0) &&
-	(octstr_case_compare(fromcode, octstr_imm ("utf8")) != 0)) {
+    if ((octstr_case_compare(fromcode, octstr_imm ("UTF-8")) != 0) &&
+	(octstr_case_compare(fromcode, octstr_imm ("UTF8")) != 0)) {
 	if (charset_to_utf8(orig, &octstr_utf8, fromcode) < 0) {
 	    resultcode = -1;
 	    goto cleanup_and_exit;
@@ -2382,8 +2382,8 @@ octstr_recode (Octstr *tocode, Octstr *fromcode, Octstr *orig)
 	octstr_utf8 = octstr_duplicate(orig);
     }
 
-    if ((octstr_case_compare(tocode, octstr_imm ("utf-8")) != 0) &&
-	(octstr_case_compare(tocode, octstr_imm ("utf8")) != 0)) {
+    if ((octstr_case_compare(tocode, octstr_imm ("UTF-8")) != 0) &&
+	(octstr_case_compare(tocode, octstr_imm ("UTF8")) != 0)) {
 	if (charset_from_utf8(octstr_utf8, &octstr_final, tocode) < 0) {
 	    resultcode = -1;
 	    goto cleanup_and_exit;

@@ -397,7 +397,8 @@ static Cfg *init_bearerbox(Cfg *cfg)
     log = cfg_get(grp, octstr_imm("store-file"));
     /* initialize the store file */
     if (log != NULL) {
-        store_init(log, store_dump_freq);
+        if (store_init(log, store_dump_freq) == -1)
+            panic(0, "Could not start with store init failed.");
         octstr_destroy(log);
     }
 
@@ -639,6 +640,7 @@ int main(int argc, char **argv)
 
     boxc_cleanup();
     smsc2_cleanup();
+    store_shutdown();
     empty_msg_lists();
     gwlist_destroy(flow_threads, NULL);
     gwlist_destroy(suspended, NULL);
@@ -687,7 +689,6 @@ int bb_shutdown(void)
     debug("bb", 0, "shutting down udp");
     udp_shutdown();
 #endif
-    store_shutdown();
     
     return 0;
 }

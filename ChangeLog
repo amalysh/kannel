@@ -1,3 +1,235 @@
+2005-11-11  Alexander Malysh <amalysh at kannel.org>
+   * gw/bb_store.c: fixed race condition when dumping into the new file but in the meantime
+     some messages will be store already in the Dictionary. Generylly means: synchronize
+     file and Dictionary contents.
+     Fixed #248.
+   * gw/bearerbox.c: added panic for the case store_init call fail.
+
+2005-11-10  Stipe Tolj  <stolj at kannel.org>
+   * doc/userguide/userguide.xml, gw/bb_smscconn.c, gwlib/cfg.def: veto'ed 
+     against naming convention for the 2 new config directives and changed them
+     to 'sms-resend-freq' and 'sms-resend-retry'.
+   
+2005-11-09  Stipe Tolj  <stolj@wapme-group.de>
+   * doc/userguide/userguide.xml: fixing default values for parameters within
+     the user's guide. Thanks to Dziugas Baltrunas <dziugas@gmail.com> for this.
+     [Msg-Id: <943470880511081236t74d1556me79aa8611611115b@mail.gmail.com>]
+
+2005-11-08  Alexander Malysh <amalysh at kannel.org>
+   * doc/userguide/userguide.xml, gw/bb_smscconn.c, gw/msg-decl.h,
+     gwlib/cfg.def: Applied patch that adds configurable max retries and
+     resend frequency for the temporarily failed messages to the core.
+
+2005-11-04  Alexander Malysh <amalysh at kannel.org>
+   * gw/smsc/smsc_smpp.c: fixed memory leak in SMPP DLR handling. Bug #265.
+     Thanks to "ungod" for reporting this.
+
+2005-11-03  Stipe Tolj  <stolj@wapme-group.de>
+   * configure[.in]: fixing mysql section for the sake of sparc-solaris-10. 
+     Thanks to David Chkhartishvili <datoch@magtigsm.ge> for reporting this.
+     [Msg-Id: <4365C800.4080402@magtigsm.ge>]
+
+2005-11-03  Stipe Tolj  <stolj@wapme-group.de>
+   * wap/wsp_strings.def: added additional charset code for UTF-16, since this
+     is widely used in production environments.
+     
+2005-10-30  Stipe Tolj  <stolj@wapme-group.de>
+   * wap/wsp_strings.def: added missing byte code for Content-disposition 
+     value 'inline'.
+
+2005-10-26  Alexander Malysh <amalysh at kannel.org>
+   * gw/bb_smscconn.c: fixed memory leak when concatenated messages was sent through
+     kannel and one of splits failed due to broken connection to SMSC. In this case
+     we looped for ever consuming 100% CPU time and all available memory because 
+     message was duplicated in SMSC module and not destroyed in core. Now we check
+     whether link is OK and only then resend via the same SMSC otherwise fail as usual.
+     Thanks to Wilfried Goesgens for debug help.
+
+2005-10-25  Stipe Tolj  <stolj@wapme-group.de>
+   * wap/cookies.c: added TODO to reflect the need to unify the functions
+     wap/cookies.c:parse_http_date() and gwlib/date.c:date_http_parse(), these
+     are obviously doing "the same", except the return value, source code
+     indenting. NLC.
+  
+2005-10-24  Stipe Tolj  <stolj@wapme-group.de>
+   * wap/wsp_headers.c, check/check_date.c: re-interpretation of return value
+     for gwlib/date.c:date_parse_http(), we assume that the signed long is
+     negative only for those values beyond epoch time border, hence wrap to
+     unsigned for further processing.
+   
+2005-10-24  Stipe Tolj  <stolj@wapme-group.de>
+   * gw/wml_compiler.c: updating well known WBXML public identifier IDs and 
+     WBXML token array up to current Encoding-Version 1.5. NLC.
+   * wap/wsp_strings.def: updating well known content type tokens, added
+     registerd tokens now too for future use, updating push application IDs.  
+   
+2005-10-21  Stipe Tolj  <stolj@wapme-group.de>
+   * doc/examples/dlr-mysql.conf: fixed the naming change from change set
+     2005-09-21, where the 'mysql-connection' group changed to use 'username'
+     and 'password' as login credentials instead of the mysql prefixes.
+     Thanks to Mike Harris <mikeh@mite.net> who pointed this out.
+     [Msg-Id: <200510201656.j9KGuqch027946@outmail.freedom2surf.net>]
+
+2005-10-10  Stipe Tolj  <stolj@wapme-group.de>
+   * test/test_regex.c: added output of the sub-strings matching a regular
+     expression, just for the sake of readability.
+     
+2005-10-07  Stipe Tolj  <stolj@wapme-group.de>
+   * doc/examples/modems.conf: added modems group for Sony Ericsson T63x, 
+     found at Heny Junior's blog describing the use on a MacOS X system. 
+     [URL: http://henryjunior.com/blog/?p=12] 
+     
+2005-10-06  Stipe Tolj  <stolj@wapme-group.de>
+   * gwlib/octstr.c: fixed a critical bug in octstr_split() where we would loop 
+     infinetly inside the while clause cuasing octstr_search() to allocate 
+     memory. If a needle has len 0, then we obviously have an exit condition 
+     for the loop.
+  
+2005-10-05  Stipe Tolj  <stolj@wapme-group.de>
+   * gw/wap_push_ppg.c: possibly fixing bug #144, initializing Octstr vars
+     that are destroyed afterwards in case of a failed URL compare, waiting on 
+     Jonathan for feedback.
+   
+2005-10-05  Stipe Tolj  <stolj@wapme-group.de>
+   * gw/wml_compiler.c: fixing bug #255 where we pass a NULL result from 
+     xmlDocGetRootElement() within parse_document() to the next functions and 
+     hence causing an segfault. Thanks a lot to Mindaugas Riauba <mind@bi.lt>
+     for the bug report and the fix suggestion.
+     [Msg-Id: <01ad01c5c807$8bca3ba0$f20214ac@bite.lt>]
+
+2005-10-04  Stipe Tolj  <stolj@wapme-group.de>
+   * doc/examples/modems.conf: commenting 'no-smsc' value for Falcom GSM modems,
+     this breaks the PDU string acceptance as far as we tested. Should be 'false'
+     for the Falcom modem type.
+
+2005-09-27  Stipe Tolj  <stolj@wapme-group.de>
+   * gwlib/dlrpool_sqlite3.c, gwlib/dbpool.[ch]: added SQLite3 support for database 
+     pool constructs. This can be used to implement a DLR storage type for SQLite3.
+   * gw-config.h.in, configure[.in]: added SQLite3 support, this is only the 
+     configuration part, yet no DLR storage implemenation for this.
+
+2005-09-27  Stipe Tolj  <stolj@wapme-group.de>
+   * gw/dlr_pgsql.c: fixed a typo from previous commit on this that broke 
+     compilation. No logic change.
+      
+2005-09-27  Alexander Malysh <amalysh at kannel.org>
+   * gw/bb_store.c: fixed start sequence of store file. Now we don't allow using
+     of store until store file was not loaded (all attempts to use store will block).
+     Also fixed some memory leaks.
+
+2005-09-26  Stipe Tolj  <stolj@wapme-group.de>
+   * configure[.in]: changed --with-sdb handling in order to break configure
+     process if the libSDB client library is not found.
+   
+2005-09-26  Stipe Tolj  <stolj@wapme-group.de>
+   * Makefile.in: added removal of 'config.nice' for distclean target.
+
+2005-09-22  Alexander Malysh <amalysh at kannel.org>
+   * gw/bb_store.c: changed writing to/from store file. Now we don't URL encode
+     the packed message that should give us a bit speedup.
+     Fixed races while loading of store file. We must read the whole store file
+     into private dictionary and then populate to the queues because at the same
+     time SMSCConns may run.
+   * gw/bearerbox.c: Fixed store file shutdown phase. It is wrong to shutdown
+     store file asynchronously while some SMSCConns or boxc connections still 
+     running. We must shutdown store file only when we made sure all producers
+     are down.
+
+2005-09-21  Stipe Tolj  <stolj@wapme-group.de>
+   * configure[.in], aclocal.m4, .cvsignore: added config.nice support to
+     the autoconf build system. This is taken from PHP5 to ease the handling
+     of configure option switches while doing re-configure calls, also
+     fixed sqlite client library handling. We now stop if the lib is not
+     present, otherwise we will run into linking stage errors afterwards.
+
+2005-09-21  Stipe Tolj  <stolj@wapme-group.de>
+   Feature request #254 in order to set port values for mysql and pgsql 
+   database connection types. Used as DLR storage space.
+   * gwlib/cfg.def: added config directive 'port' to 'myqsl|pgsql-connection'
+     groups, changed mysql config directive names to 'username' and 
+     'password' to reflect the harmonization to others. (COMPATIBILITY BREAKER)
+   * gwlib/dbpool.[ch]: added port value to mysql and pgsql confs, also 
+     renamed internal pgsql variables to be more harmonized.
+   * gwlib/dbpool_[pgsql|myqsl].c: added port variable support and changed 
+     internal variable naming.
+   * gw/dlr_[sdb|oracle].c: source code layout fixes. No logic change.
+   * gw/dlr_[pgsql|mysql].c: added port variable support and minor source
+     layout changes.
+   
+2005-09-20  Stipe Tolj  <stolj@wapme-group.de>
+   * doc/userguide/userguide.xml, gw/sms.[ch], gw/smsbox.c, gw/xml_shared.c,
+     gw/smsc/smsc_[cimd2|ois|oisd|soap].c, gwlib/http.h, gwlib/octstr.c, 
+     wmlscript/wsbc.c: fixing bug #252 where references to UTF-16[BE] and 
+     UCS-2 have been mis-spelled. No logic change.
+   
+2005-09-15  Stipe Tolj  <stolj@wapme-group.de>
+   * gw/smsc/smsc_at.[ch]: applied RAW TCP patch to support remote termnial 
+     server connections for devices. Also some inlined source code beauty.
+   * doc/userguide/userguide.xml: added variables for the RAW TCP mode.
+     Thanks to Stanislav Sinyagin <ssinyagin@yahoo.com> for the patch.
+     [Msg-Id: <20050914152140.76555.qmail@web51904.mail.yahoo.com>]
+     
+2005-09-15  Stipe Tolj  <stolj@wapme-group.de>
+   * gw/smsc/smsc_at.c: fixing compiler warning. No logic change.
+   
+2005-09-14  Stipe Tolj  <stolj@wapme-group.de>
+   * gw/smsc/smsc_at.c: fixing a bug for 'nokiaphone' GSM modem types, where
+     PDUs longer then 18 bytes get truncated by the device if passed too fast.
+     We pass the PDU now in 18 byte chunks and delay to smoothly allow the
+     device to parse this. This is know for the Nokia phone GSM types.
+     Thanks to Ulrich Petri <upml@upcd.de> for the fix and patch.
+     [Msg-Id: <4326E76A.3040902@upcd.de>]
+
+2005-09-14  Stipe Tolj  <stolj@wapme-group.de>
+   * gw/smsc/smsc_at.c: minor change in at_wait_modem_command to display the 
+     sscanf() parsed error code string lateral only if we really found a int
+     in the string returned from the device. No logic change. 
+     Thanks to Alex Judd <kannel@skywire.co.uk> for this hint.
+     [Msg-Id: <4326F4EB.5070302@skywire.co.uk>]
+     
+2005-09-08  Stipe Tolj  <stolj@wapme-group.de>
+   * gw/wml_compiler.c: source styling, no logic change.
+   * configure[.in]: changed required version of libxml2 to 2.6.0 due to
+     applied Paul's patch to gw/wml_compiler.c. Solves compiler warnings
+     and errors. Fixing build bug reported by Jarrod Hermer <jarrod@mybeat.net>.
+     [Msg-Id: <20050908093728.B109C5A44@ctb-mesg1.saix.net>]
+    
+2005-09-02  Alexander Malysh <amalysh at kannel.org>
+   * gw/smsc/smpp_pdu.c: fixed length for the NULterminated TLV.
+
+2005-09-01  Alexander Malysh <amalysh at kannel.org>
+   * gw/wap-appl.c: fixed compiler warning.
+   * gw/wml_compiler.c: added 'libxml/parser.h' to includes because it cause build to fail.
+
+2005-08-20 Andreas Fink <andreas@fink.org>
+   * gwlib/soket.h fixed socklen_t double definition on MacOS X 10.4
+   * configure.in fixed incorrect brackets
+
+2005-08-12  Alexander Malysh <amalysh at kannel.org>
+   * gw/smsc/smsc_smpp.c: fixed bug #242 that case statement because of missing break for requeue
+     action triggered error condition. Thanks to srivest for report.
+
+2005-08-12  Alexander Malysh <amalysh at kannel.org>
+   * gw/wap-appl.c, gw/wml_compiler.c: applied charset-NG patch that generalize charset handling
+     in the WAP stack. Thanks to Paul P Komkoff.
+     [Msg-Id: <20050602143346.GA28202@stingr.stingr.net>]
+
+2005-07-26 Aarno Syvanen <as@gni.ch>
+   * doc/userguide/userguide.xml: Removed a duplicate
+
+2005-06-10  Andreas Fink <andreas@fink.org>
+   * gwlib/gw_uuid.h: uuid_t doesnt need to be defined on MacOS X. New compiler dislikes it
+     configure, configure.in: Build changes to correctly build on XCode 2.1
+     including dual build for ppc and i386 architecture if possible
+
+2005-06-02  Stipe Tolj  <stolj@wapme.de>
+    * gwlib/http.c, gwlib/fdset.c: some code styling within handle_transaction 
+      and poller. No logic change.
+
+2005-05-28  Alexander Malysh <amalysh at kannel.org>
+    * gw/bb_store.c: fixed bug tthat caused bearerbox to consume 100% cpu time.
+      Hopefully fixed #230 (see Mantis).
+
 2005-05-10  Alexander Malysh <amalysh at kannel.org>
     * gw/smsc/smsc_ois.c, gwlib/gwmem-check.c, test/test_regex.c: fixed coompiler
       warnings.
@@ -232,7 +464,6 @@
       [Msg-ID: <4214F128.4090007@wirelessonenet.com>]
 
 2005-02-17  Stipe Tolj  <stolj@wapme.de> 
-
     * test/test_radius_pdu.c: some minor issues, like usage display
       etc.
 
@@ -435,27 +666,22 @@
       [Msg-Id: <1103539890.3803.309.camel@localhost.localdomain>]
 
 2004-12-15    <kmarjola@enpocket.com>
-
     * gw/bb_store.c: removed -Wall warnings
     * gw/smskannel.conf: resumed global-sender, otherwise make check
       does not work
 
 2004-12-13    <kmarjola@enpocket.com>
-
     * gw/bb_store.c: use Dict to make things much more faster. Also
       introduce 'store-dump-freq' to set up how often the situation
       is stored to file
     * gw/bearerbox.*, gwlib/cfg.def, doc/userguide/userguide.xml: 
       relevant changes
-
     * test/fakesmsc.c: update usage to reflect changed command line
       argument (-p to -r)
-
     * gw/smskannel.conf: updated to include much more explanations
       and fixed above thing
 	
 2004-11-30    <kmarjola@enpocket.com>
-
     * gwlib/conn.c: Bug fix: try not to read negative number of bytes
     * gwlib/http.c: Bug fix: close connection with bad content-length
 

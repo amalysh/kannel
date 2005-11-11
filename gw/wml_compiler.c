@@ -78,6 +78,7 @@
 #include <libxml/tree.h>
 #include <libxml/debugXML.h>
 #include <libxml/encoding.h>
+#include <libxml/parser.h>
 
 #include "gwlib/gwlib.h"
 #include "wml_compiler.h"
@@ -85,6 +86,9 @@
 
 /***********************************************************************
  * Declarations of data types. 
+ * 
+ * Binary code values are defined by OMNA, see 
+ * http://www.openmobilealliance.org/tech/omna/omna-wbxml-public-docid.htm
  */
 
 struct wml_externalid_t {
@@ -95,10 +99,25 @@ struct wml_externalid_t {
 typedef struct wml_externalid_t wml_externalid_t;
 
 static wml_externalid_t wml_externalid[] = {
-    { "-//WAPFORUM//DTD WML 1.3//EN", 0x0A },
-    { "-//WAPFORUM//DTD WML 1.2//EN", 0x09 },
-    { "-//WAPFORUM//DTD WML 1.1//EN", 0x04 },
-    { "-//WAPFORUM//DTD WML 1.0//EN", 0x02 }
+    { "-//WAPFORUM//DTD WML 1.0//EN", 0x02 },           /* WML 1.0 */
+    { "-//WAPFORUM//DTD WTA 1.0//EN", 0x03 },           /* DEPRECATED - WTA Event 1.0 */
+    { "-//WAPFORUM//DTD WML 1.1//EN", 0x04 },           /* WML 1.1 */
+    { "-//WAPFORUM//DTD SI 1.0//EN", 0x05 },            /* Service Indication 1.0 */
+    { "-//WAPFORUM//DTD SL 1.0//EN", 0x06 },            /* Service Loading 1.0 */
+    { "-//WAPFORUM//DTD CO 1.0//EN", 0x07 },            /* Cache Operation 1.0 */
+    { "-//WAPFORUM//DTD CHANNEL 1.1//EN", 0x08 },       /* Channel 1.1 */
+    { "-//WAPFORUM//DTD WML 1.2//EN", 0x09 },           /* WML 1.2 */
+    { "-//WAPFORUM//DTD WML 1.3//EN", 0x0A },           /* WML 1.3 */
+    { "-//WAPFORUM//DTD PROV 1.0//EN", 0x0B },          /* Provisioning 1.0 */
+    { "-//WAPFORUM//DTD WTA-WML 1.2//EN", 0x0C },       /* WTA-WML 1.2 */
+    { "-//WAPFORUM//DTD EMN 1.0//EN", 0x0D },           /* Email Notification 1.0 WAP-297 */
+    { "-//OMA//DTD DRMREL 1.0//EN", 0x0E },             /* DRM REL 1.0 */
+    { "-//WIRELESSVILLAGE//DTD CSP 1.0//EN", 0x0F },    /* Wireless Village CSP DTD v1.0 */
+    { "-//WIRELESSVILLAGE//DTD CSP 1.1//EN", 0x10 },    /* Wireless Village CSP DTD v1.1 */
+    { "-//OMA//DTD WV-CSP 1.2//EN", 0x11 },             /* OMA IMPS - CSP protocol DTD v1.2 */
+    { "-//OMA//DTD IMPS-CSP 1.3//EN", 0x12 }            /* This document type is used to carry OMA 
+                                                         * IMPS 1.3 primitives and the information 
+                                                         * elements within. */
 };
 
 #define NUMBER_OF_WML_EXTERNALID sizeof(wml_externalid)/sizeof(wml_externalid[0])
@@ -111,9 +130,11 @@ struct wbxml_version_t {
 typedef struct wbxml_version_t wbxml_version_t;
 
 static wbxml_version_t wbxml_version[] = {
-    { "1.3", 0x03 },
-    { "1.2", 0x02 },
     { "1.1", 0x01 },
+    { "1.2", 0x02 },
+    { "1.3", 0x03 },
+    { "1.4", 0x04 },
+    { "1.5", 0x05 }
 };
 
 #define NUMBER_OF_WBXML_VERSION sizeof(wbxml_version)/sizeof(wbxml_version[0])
@@ -335,7 +356,6 @@ int wml_compile(Octstr *wml_text, Octstr *charset, Octstr **wml_binary,
     xmlDocPtr pDoc = NULL;
     char *wml_c_text;
     wml_binary_t *wbxml = NULL;
-    Octstr *encoding = NULL;
 
     *wml_binary = octstr_create("");
     wbxml = wml_binary_create();
@@ -347,63 +367,33 @@ int wml_compile(Octstr *wml_text, Octstr *charset, Octstr **wml_binary,
        -- tuo */
     parse_entities(wml_text);
 
-    /* transcode from charset to UTF-8 */
-    if (charset && octstr_len(charset) && 
-        octstr_case_compare(charset, octstr_imm("UTF-8")) == -1) {
-        debug("wml_compile", 0, "WML compiler: Transcoding from <%s> to UTF-8", 
-              octstr_get_cstr(charset));
-        set_charset(wml_text, charset);
-    }
-
-    /* 
-     * If we did not set the character set encoding yet, then obviously
-     * there was no charset argument in the Content-Type HTTP reply header.
-     * We have to scan the xml preamble line for an explicite encoding
-     * definition to allow transcoding from UTF-8 to that charset after 
-     * libxml2 did all it's parsing magic. (Keep in mind libxml2 uses UTF-8
-     * as internal encoding.) -- Stipe
-     */
-
-    /* 
-     * We will trust the xml preamble encoding more then the HTTP header 
-     * charset definition.
-     */
-    if ((encoding = find_charset_encoding(wml_text)) != NULL) {
-        /* ok, we rely on the xml preamble encoding */
-    } else if (charset && octstr_len(charset) > 0) {
-        /* we had a HTTP response charset, use this */
-        encoding = octstr_duplicate(charset);
-    } else {
-        /* we had none, so use UTF-8 as default */
-        encoding = octstr_create("UTF-8");
-    }
-
     size = octstr_len(wml_text);
     wml_c_text = octstr_get_cstr(wml_text);
+    debug("ww",0, "given encoding: %s", octstr_get_cstr(charset));
 
     if (octstr_search_char(wml_text, '\0', 0) != -1) {    
         error(0, "WML compiler: Compiling error: "
                  "\\0 character found in the middle of the WML source.");
         ret = -1;
     } else {
-
         /* 
          * An empty octet string for the binary output is created, the wml 
          * source is parsed into a parsing tree and the tree is then compiled 
          * into binary.
          */
 
-        pDoc = xmlParseMemory(wml_c_text, size);
+        pDoc = xmlReadMemory(wml_c_text, size, NULL, octstr_get_cstr(charset), 
+                             XML_PARSE_RECOVER | XML_PARSE_NONET);
        
         if (pDoc != NULL) {
             /* 
              * If we have a set internal encoding, then apply this information 
              * to the XML parsing tree document for later transcoding ability.
              */
-            if (encoding)
-                pDoc->charset = xmlParseCharEncoding(octstr_get_cstr(encoding));
+            if (charset)
+                pDoc->charset = xmlParseCharEncoding(octstr_get_cstr(charset));
 
-            ret = parse_document(pDoc, encoding, &wbxml, version);
+            ret = parse_document(pDoc, charset, &wbxml, version);
             wml_binary_output(*wml_binary, wbxml);
         } else {    
             error(0, "WML compiler: Compiling error: "
@@ -413,7 +403,6 @@ int wml_compile(Octstr *wml_text, Octstr *charset, Octstr **wml_binary,
     }
 
     wml_binary_destroy(wbxml);
-    octstr_destroy(encoding);
 
     if (pDoc) 
         xmlFreeDoc(pDoc);
@@ -630,6 +619,13 @@ static int parse_document(xmlDocPtr document, Octstr *charset,
         parse_charset(charset) : parse_charset(octstr_imm("UTF-8"));
 
     node = xmlDocGetRootElement(document);
+    
+    if (node == NULL) {
+        error(0, "WML compiler: XML parsing failed, no document root element.");
+        error(0, "Most probably an error in the WML source.");
+        return -1;
+    }
+    
     string_table_build(node, wbxml);
 
     return parse_node(node, wbxml);

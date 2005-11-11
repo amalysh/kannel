@@ -54,7 +54,7 @@
 	</author>
 	<author>
 		<firstname>Aarno</firstname>
-		<surname>Syvänen</surname>
+		<surname>Syv&auml;nen</surname>
 		<affiliation>
 			<jobtitle>Chief MMS Developer</jobtitle>
 			<orgname>Global Networks Inc.</orgname>
@@ -1479,6 +1479,22 @@ admin-password = f00bar
         </entry>   
      </row>
   
+     <row><entry><literal>sms-resend-freq</literal></entry>
+        <entry>seconds</entry>
+        <entry valign="bottom">
+        Frequency for the SMS resend thread in which temporarily failed or queued messages will be resent.
+        Defaults to 60 seconds.
+        </entry>   
+     </row>
+
+     <row><entry><literal>sms-resend-retry</literal></entry>
+        <entry>number</entry>
+        <entry valign="bottom">
+        Maximum retry attempts for the temporarily failed messages.
+        Defaults to -1, means: unlimited.
+        </entry>   
+     </row>
+
   </tbody>
   </tgroup>
  </table>
@@ -3460,7 +3476,10 @@ pin = 2345
      <entry><literal>device-name</literal></entry>
      <entry valign="bottom">
           The device the modem is connected to, like <literal>/dev/ttyS0</literal>.
-     </entry></row>
+          When the device name is set to <literal>rawtcp</literal>, two other
+          variables are required in the configuration: <literal>host</literal>
+          and <literal>port</literal>. See the note below.
+      </entry></row>
 
    <row><entry><literal>speed</literal></entry>
      <entry><literal>serial speed in bps</literal></entry>
@@ -3527,6 +3546,20 @@ pin = 2345
           Maximal error count for opening modem device or initializing of the modem before
           <literal>reset-string</literal> will be executed. This is useful when modem crashed and needs
           hard reset. Default disabled.
+       </entry></row>
+       
+     <row><entry><literal>host</literal></entry>
+       <entry><literal>IP address</literal></entry>
+       <entry valign="bottom">
+          Hostname or IP address to connect in <literal>rawtcp</literal> mode. 
+          Required if <literal>device</literal> is set to <literal>rawtcp</literal>.
+       </entry></row>
+
+     <row><entry><literal>port</literal></entry>
+       <entry><literal>integer</literal></entry>
+       <entry valign="bottom">
+          TCP port to connect to on <literal>rawtcp-host</literal>.
+          Required if <literal>device</literal> is set to <literal>rawtcp</literal>.
        </entry></row>
 
    </tbody></tgroup></informaltable>
@@ -3683,6 +3716,14 @@ pin = 2345
    reports to SIM memory, to get at which you will need to enable sim-buffering. 
    finally your GSM network provider may not support delivery reports to mobile 
    units.</para>
+
+   <para><emphasis>About <literal>rawtcp</literal> mode:</emphasis>
+   This mode allows you to use a GSM modem connected to a remote terminal server,
+   such as Perle IOLAN DS1 or a Cisco router with reverse telnet. The teminal
+   server should support raw TCP mode. The driver is not tested in telnet mode.
+   It is recommended to use <literal>keepalive</literal> variable, in order to 
+   automatically reconnect in case of network connectivity problems.</para>
+
 
 </sect2>
 
@@ -5113,7 +5154,7 @@ ssl-certkey-file
     <row><entry><literal>mo-recode</literal></entry>
      <entry>boolean</entry>
      <entry valign="bottom">
-        If enabled, Kannel will try to convert received messages with UCS2 charset
+        If enabled, Kannel will try to convert received messages with UCS-2 charset
 	to ISO-8859-1 or to UTF-8, simplifying external servers jobs. If Kannel is 
 	able to recode message, it will also change <literal>coding</literal> to 
 	<literal>7 bits</literal> and <literal>charset</literal> to 
@@ -5792,8 +5833,7 @@ the sendsms-user or sms-service name
 </entry></row>
 
 <row><entry><literal>%c</literal></entry><entry>
-message coding: 0 (default, 7 bits), 1 (7 bits),
-2 (8 bits) or 3 (Unicode)
+message coding: 0 (default, 7 bits), 1 (8 bits) or 2 (Unicode)
 </entry></row>
 
 <row><entry><literal>%m</literal></entry><entry>
@@ -5809,8 +5849,8 @@ and 4, 5, 6, 7 for deactivation respectively.
 
 <row><entry><literal>%C</literal></entry><entry>
 message charset: for a "normal" message, it will 
-be "GSM" (coding=1), "binary" (coding=2) or 
-"UTF16-BE" (coding=3). If the message was successfully
+be "GSM" (coding=0), "binary" (coding=1) or 
+"UTF-16BE" (coding=2). If the message was successfully
 recoded from Unicode, it will be "ISO-8859-1"
 </entry></row>
 
@@ -5969,12 +6009,12 @@ text = "No action specified"
    <entry><literal>X-Kannel-Compress</literal></entry></row>
 
    <row><entry><literal>coding</literal></entry>
-   <entry><literal>X-Kannel-Coding</literal>. If unset, defaults to 1 
+   <entry><literal>X-Kannel-Coding</literal>. If unset, defaults to 0 
    (7 bits) if <literal>Content-Type</literal> is <literal>text/plain
    </literal>, <literal>text/html</literal> or 
    <literal>text/vnd.wap.wml</literal>. On 
    <literal>application/octet-stream</literal>, defaults to
-   8 bits (2). All other <literal>Content-Type</literal> values 
+   8 bits (1). All other <literal>Content-Type</literal> values 
    are rejected.</entry></row>
 
    <row><entry><literal>validity</literal></entry>
@@ -6069,7 +6109,7 @@ text = "No action specified"
 
    <row><entry><literal>%c (coding)</literal></entry>
    <entry><literal>X-Kannel-Coding</literal></entry>
-   <entry>1=7 Bits, 2=8 Bits, 3=UCS2</entry></row>
+   <entry>0=7 Bits, 1=8 Bits, 2=UCS-2</entry></row>
 
    <row><entry><literal>- (compress)</literal></entry>
    <entry><literal>X-Kannel-Compress</literal></entry>
@@ -6844,8 +6884,8 @@ the Kannel configuration, or 'Authorization failed' is returned.
    <entry><literal>string</literal></entry>
    <entry valign="bottom">
         Charset of text message. Used to convert to a format suitable for
-	7 bits or to UCS2. Defaults to ISO-8859-1 if coding is 7bits and
-	UTF16BE if coding is UCS2.
+	7 bits or to UCS-2. Defaults to ISO-8859-1 if coding is 7bits and
+	UTF-16BE if coding is UCS-2.
    </entry></row>
 
    <row><entry><literal>udh</literal></entry>
@@ -6907,7 +6947,7 @@ the Kannel configuration, or 'Authorization failed' is returned.
    <entry><literal>number</literal></entry>
    <entry valign="bottom">
          Optional. Sets the coding scheme bits in DCS field.
-	 Accepts values 0 to 2, for 7bit, 8bit or UCS2.
+	 Accepts values 0 to 2, for 7bit, 8bit or UCS-2.
 	 If unset, defaults to 7 bits unless a udh is defined, which sets
 	 coding to 8bits.
    </entry></row>
@@ -6965,14 +7005,14 @@ the Kannel configuration, or 'Authorization failed' is returned.
    <entry valign="bottom">
 	   Optional. Sets the PID value. (See ETSI Documentation).
 	   Ex: SIM Toolkit messages would use something like 
-	   <literal>&amp;pid=127&amp;coding=2&amp;alt-dcs=1&amp;mclass=3</literal>
+	   <literal>&amp;pid=127&amp;coding=1&amp;alt-dcs=1&amp;mclass=3</literal>
    </entry></row>
 
    <row><entry><literal>alt-dcs</literal></entry>
    <entry><literal>number</literal></entry>
    <entry valign="bottom">
 	   Optional. If unset, Kannel uses the alt-dcs defined on smsc configuration,
-	   or 0X per default. If equals to 1, uses FX. If equals to 2, force 0X.
+	   or 0X per default. If equals to 1, uses FX. If equals to 0, force 0X.
    </entry></row>
 
    <row><entry><literal>rpi</literal></entry>
@@ -7334,11 +7374,6 @@ trusted-pi = false
              <entry valign="bottom">
              If no dlr url is given with the wappush HTTP request (see below), use
              this one as default route for all push messages.
-             </entry></row>
-             <row><entry><literal>ppg-smsbox-id</literal></entry>
-             <entry><emphasis>string</emphasis></entry>
-             <entry valign="bottom">
-             All ppg delivery reports are handled by this smsbox..
              </entry></row>
              <row><entry><literal>service-name</literal></entry>
              <entry><emphasis>string</emphasis></entry>

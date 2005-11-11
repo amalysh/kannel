@@ -57,7 +57,7 @@
 /*
  * dbpool.h - database pool functions
  *
- * Stipe Tolj <stolj@wapme.de>
+ * Stipe Tolj <stolj@wapme-group.de>
  * Alexander Malysh <a.malysh@centrium.de>
  */
 
@@ -66,13 +66,14 @@
 
 #if defined(HAVE_MYSQL) || defined(HAVE_SDB) || \
     defined(HAVE_ORACLE) || defined(HAVE_SQLITE) || \
-    defined(HAVE_PGSQL)
+    defined(HAVE_PGSQL) || defined(HAVE_SQLITE3)
 #define HAVE_DBPOOL 1
 #endif
 
 /* supported databases for connection pools */
 enum db_type {
-	DBPOOL_MYSQL, DBPOOL_SDB, DBPOOL_ORACLE, DBPOOL_SQLITE, DBPOOL_PGSQL
+	DBPOOL_MYSQL, DBPOOL_SDB, DBPOOL_ORACLE, DBPOOL_SQLITE, DBPOOL_PGSQL,
+    DBPOOL_SQLITE3
 };
 
 
@@ -95,6 +96,7 @@ typedef struct DBPool DBPool;
 
 typedef struct {
     Octstr *host;
+    long port;
     Octstr *username;
     Octstr *password;
     Octstr *database;
@@ -104,9 +106,9 @@ typedef struct {
  * TODO Think how to get rid of it and have generic Conf struct
  */
 typedef struct {
-    Octstr *tnsname;
     Octstr *username;
     Octstr *password;
+    Octstr *tnsname;
 } OracleConf;
 
 typedef struct {
@@ -118,21 +120,25 @@ typedef struct {
 } SQLiteConf;
 
 typedef struct {
-    Octstr *pghost;
-    Octstr *pgport;
-    Octstr *pgoptions;
-    Octstr *pgtty;
-    Octstr *login;
-    Octstr *password;
-    Octstr *dbName;
-} PgSQLConf;
+    Octstr *file;
+} SQLiteConf3;
 
+typedef struct {
+    Octstr *host;
+    long port;
+    Octstr *username;
+    Octstr *password;
+    Octstr *database;
+    Octstr *options;    /* yet not used */
+    Octstr *tty;        /* yet not used */
+} PgSQLConf;
 
 typedef union {
     MySQLConf *mysql;
     SDBConf *sdb;
     OracleConf *oracle;
     SQLiteConf *sqlite;
+    SQLiteConf3 *sqlite3;
     PgSQLConf *pgsql;
 } DBConf;
 

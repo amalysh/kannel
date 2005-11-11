@@ -2,6 +2,7 @@ config.log
 config.h
 config.cache
 config.status
+config.nice
 .depend
 Makefile
 diff
@@ -9,3 +10,4 @@ diff2
 build-stamp
 gw-config.h
 gw-config
+*.a

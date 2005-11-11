@@ -58,16 +58,20 @@
  * gw/wap-appl.c - wapbox application layer and push ota indication, response
  * and confirmation primitive implementation.
  *
- * This module implements indication and confirmation primitives of WAP-189-
- * PushOTA-20000217-a (hereafter called ota). 
- * In addition, WAP-200-WDP-20001212-a (wdp) is referred.
- * Wapbox application layer is not a Wapforum protocol. 
+ * This module implements various indication and confirmation primitives and 
+ * protocol mappings as defined in:
+ * 
+ *   WAP-189-PushOTA-20000217-a (hereafter called ota)
+ *   WAP-200-WDP-20001212-a (wdp)
+ *   WAP-248-UAProf-20011020-a (UAProf)
+ * 
+ * Wapbox application layer itself is not a WAP Forum protocol. 
  *
  * The application layer is reads events from its event queue, fetches the 
  * corresponding URLs and feeds back events to the WSP layer (pull). 
  *
  * In addition, the layer forwards WSP events related to push to the module 
- * wap_push_ppg and wsp, implementing indications, responses  and confirma-
+ * wap_push_ppg and wsp, implementing indications, responses and confirma-
  * tions of ota.
  *
  * Note that push header encoding and decoding are divided two parts:
@@ -510,15 +514,8 @@ static void add_kannel_version(List *headers)
  * to handle those charsets for all content types, just WML/XHTML. */
 static void add_charset_headers(List *headers) 
 {
-    long i, len;
-    
-    gw_assert(charsets != NULL);
-    len = gwlist_len(charsets);
-    for (i = 0; i < len; i++) {
-        unsigned char *charset = octstr_get_cstr(gwlist_get(charsets, i));
-        if (!http_charset_accepted(headers, charset))
-            http_header_add(headers, "Accept-Charset", charset);
-    }
+    if (!http_charset_accepted(headers, "utf-8"))
+        http_header_add(headers, "Accept-Charset", "utf-8");
 }
 
 
@@ -643,6 +640,26 @@ static void add_msisdn(List *headers, WAPAddrTuple *addr_tuple,
 }
 
 
+/* 
+ * Map WSP UAProf headers 'Profile', 'Profile-Diff' to W-HTTP headers
+ * 'X-WAP-Profile', 'X-WAP-Profile-Diff' according to WAP-248-UAProf-20011020-a,
+ * section 9.2.3.3.
+ */
+static void map_uaprof_headers(List *headers) 
+{
+    Octstr *os;
+    Octstr *version;
+    
+    version = http_header_value(headers, octstr_imm("Encoding-Version"));
+    os = octstr_format("WAP/%s %S (" GW_NAME "/%s)", 
+                       (version ? octstr_get_cstr(version) : "1.1"),
+                       get_official_name(), GW_VERSION);
+    http_header_add(headers, "Via", octstr_get_cstr(os));
+    octstr_destroy(os);
+    octstr_destroy(version);
+}
+
+
 /* XXX DAVI: Disabled in cvs revision 1.81 for Opengroup tests
 static void add_referer_url(List *headers, Octstr *url) 
 {
@@ -706,6 +723,38 @@ static void return_unit_reply(WAPAddrTuple *tuple, long transaction_id,
     wsp_unit_dispatch_event(e);
 }
 
+
+static void normalize_charset(struct content * content, List* device_headers)
+{
+    Octstr* charset;
+
+    if ((charset = find_charset_encoding(content->body)) == NULL) {
+        if (octstr_len(content->charset) > 0) {
+            charset = octstr_duplicate(content->charset);
+        } else {
+            charset = octstr_imm("UTF-8");
+        }
+    }
+
+    debug("wap-appl",0,"Normalizing charset from %s", octstr_get_cstr(charset));
+
+    if (octstr_case_compare(charset, octstr_imm("UTF-8")) != 0 &&
+      !http_charset_accepted(device_headers, octstr_get_cstr(charset))) {
+        if (!http_charset_accepted(device_headers, "UTF-8")) {
+            warning(0, "WSP: Device doesn't support charset <%s> neither UTF-8",
+              octstr_get_cstr(charset));
+        } else {
+            debug("wsp",0,"Converting wml/xhtml from charset <%s> to UTF-8",
+              octstr_get_cstr(charset));
+            if (charset_convert(content->body,
+              octstr_get_cstr(charset), "UTF-8") >= 0) {
+                octstr_destroy(content->charset);
+                content->charset = octstr_create("UTF-8");
+            }
+        }
+    }
+    octstr_destroy(charset);
+}
 
 /*
  * Return an HTTP reply back to the phone.
@@ -848,54 +897,8 @@ static void return_reply(int status, Octstr *content_body, List *headers,
         if (octstr_search(content.type, octstr_imm("text/vnd.wap.wml"), 0) >= 0 || 
             octstr_search(content.type, octstr_imm("application/xhtml+xml"), 0) >= 0 ||
             octstr_search(content.type, octstr_imm("application/vnd.wap.xhtml+xml"), 0) >= 0) {
-            Octstr *charset;
-            
-            /* get charset used in content body, default to utf-8 if not present */
-            if ((charset = find_charset_encoding(content.body)) == NULL)
-                charset = octstr_imm("UTF-8"); 
 
-            /* convert to utf-8 if original charset is not utf-8 
-             * and device supports it */
-
-            if (octstr_case_compare(charset, octstr_imm("UTF-8")) < 0 &&
-                !http_charset_accepted(device_headers, octstr_get_cstr(charset))) {
-                if (!http_charset_accepted(device_headers, "UTF-8")) {
-                    warning(0, "WSP: Device doesn't support charset <%s> neither UTF-8", 
-                                octstr_get_cstr(charset));
-                } else {
-                    /* convert to utf-8 */
-                    debug("wsp",0,"Converting wml/xhtml from charset <%s> to UTF-8", 
-                          octstr_get_cstr(charset));
-                    if (charset_convert(content.body, 
-                                        octstr_get_cstr(charset), "UTF-8") >= 0) {
-                        octstr_destroy(content.charset);
-                        content.charset = octstr_create("UTF-8");
-                        /* XXX it might be good idea to change <?xml...encoding?> */
-                    }
-                 }
-            }
- 
-            /* convert to iso-8859-1 if original charset is not iso 
-             * and device supports it */
-            else if (octstr_case_compare(charset, octstr_imm("ISO-8859-1")) < 0 &&
-                    !http_charset_accepted(device_headers, octstr_get_cstr(charset))) {
-                if (!http_charset_accepted(device_headers, "ISO-8859-1")) {
-                    warning(0, "WSP: Device doesn't support charset <%s> neither ISO-8859-1", 
-                            octstr_get_cstr(charset));
-                } else {
-                    /* convert to iso-latin1 */
-                    debug("wsp",0,"Converting wml/xhtml from charset <%s> to ISO-8859-1", 
-                          octstr_get_cstr(charset));
-                    if (charset_convert(content.body, 
-                                        octstr_get_cstr(charset), "ISO-8859-1") >= 0) {
-                        octstr_destroy(content.charset);
-                        content.charset = octstr_create("ISO-8859-1");
-                        /* XXX it might be good idea to change <?xml...encoding?> */
-                    }
-                }
-            }
-
-            octstr_destroy(charset);
+            normalize_charset(&content, device_headers);
         }
 
         /* set WBXML Encoding-Version for wml->wmlc conversion */

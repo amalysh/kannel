@@ -1,21 +1,33 @@
-/.cvsignore/1.5/Mon Oct 13 09:19:48 2003//
-/AUTHORS/1.9/Fri Jan 26 17:02:46 2001//
-/COPYING/1.2/Sat Nov 15 13:14:23 2003//
-/ChangeLog/1.2652/Tue May 10 10:42:55 2005//
-/INSTALL/1.2/Thu Nov 30 20:58:42 2000//
-/LICENSE/1.5/Fri Feb 11 15:35:47 2005//
-/Makefile.in/1.75/Wed Jan 19 17:57:41 2005//
-/NEWS/1.54/Fri Feb 11 14:33:50 2005//
-/README/1.42/Sun Apr 18 21:53:25 2004//
-/STATUS/1.34/Fri Jul 18 22:12:34 2003//
-/VERSION/1.95/Tue Nov 23 16:21:50 2004//
-/aclocal.m4/1.8/Fri Feb 11 15:35:47 2005//
-/config.guess/1.7/Thu May 29 22:36:03 2003//
-/config.sub/1.7/Thu May 29 22:36:03 2003//
-/configure/1.149/Thu May  5 13:24:29 2005//
-/configure.in/1.153/Thu May  5 13:24:29 2005//
-/gw-config.h.in/1.16/Tue Mar  1 02:44:35 2005//
-/install-sh/1.2/Wed Aug 11 16:41:28 2004//
-/missing/1.1/Thu Dec 30 14:58:54 1999//
-/mkinstalldirs/1.1/Thu Dec 30 14:58:54 1999//
-D
+D/benchmarks////
+D/checks////
+D/contrib////
+D/debian////
+D/doc////
+D/gw////
+D/gwlib////
+D/radius////
+D/solaris////
+D/test////
+D/utils////
+D/wap////
+D/wmlscript////
+/.cvsignore/1.7/Fri Nov 11 17:29:59 2005//
+/AUTHORS/1.9/Fri Nov 11 16:58:28 2005//
+/COPYING/1.2/Fri Nov 11 16:58:31 2005//
+/ChangeLog/1.2696/Fri Nov 11 17:30:00 2005//
+/INSTALL/1.2/Fri Nov 11 16:58:31 2005//
+/LICENSE/1.5/Fri Nov 11 16:58:32 2005//
+/Makefile.in/1.76/Fri Nov 11 17:30:00 2005//
+/NEWS/1.54/Fri Nov 11 16:58:32 2005//
+/README/1.42/Fri Nov 11 16:58:34 2005//
+/STATUS/1.34/Fri Nov 11 16:58:28 2005//
+/VERSION/1.95/Fri Nov 11 16:58:28 2005//
+/aclocal.m4/1.9/Fri Nov 11 17:30:00 2005//
+/config.guess/1.7/Fri Nov 11 16:58:28 2005//
+/config.sub/1.7/Fri Nov 11 16:58:28 2005//
+/configure/1.155/Fri Nov 11 17:30:00 2005//
+/configure.in/1.160/Fri Nov 11 17:30:00 2005//
+/gw-config.h.in/1.17/Fri Nov 11 17:30:00 2005//
+/install-sh/1.2/Fri Nov 11 16:58:36 2005//
+/missing/1.1/Fri Nov 11 16:58:35 2005//
+/mkinstalldirs/1.1/Fri Nov 11 16:58:32 2005//
