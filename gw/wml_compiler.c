@@ -94,34 +94,17 @@
 
 struct wml_externalid_t {
     char *string;
-    char value;
+    unsigned long value;
 };
 
 typedef struct wml_externalid_t wml_externalid_t;
 
-static wml_externalid_t wml_externalid[] = {
-    { "-//WAPFORUM//DTD WML 1.0//EN", 0x02 },           /* WML 1.0 */
-    { "-//WAPFORUM//DTD WTA 1.0//EN", 0x03 },           /* DEPRECATED - WTA Event 1.0 */
-    { "-//WAPFORUM//DTD WML 1.1//EN", 0x04 },           /* WML 1.1 */
-    { "-//WAPFORUM//DTD SI 1.0//EN", 0x05 },            /* Service Indication 1.0 */
-    { "-//WAPFORUM//DTD SL 1.0//EN", 0x06 },            /* Service Loading 1.0 */
-    { "-//WAPFORUM//DTD CO 1.0//EN", 0x07 },            /* Cache Operation 1.0 */
-    { "-//WAPFORUM//DTD CHANNEL 1.1//EN", 0x08 },       /* Channel 1.1 */
-    { "-//WAPFORUM//DTD WML 1.2//EN", 0x09 },           /* WML 1.2 */
-    { "-//WAPFORUM//DTD WML 1.3//EN", 0x0A },           /* WML 1.3 */
-    { "-//WAPFORUM//DTD PROV 1.0//EN", 0x0B },          /* Provisioning 1.0 */
-    { "-//WAPFORUM//DTD WTA-WML 1.2//EN", 0x0C },       /* WTA-WML 1.2 */
-    { "-//WAPFORUM//DTD EMN 1.0//EN", 0x0D },           /* Email Notification 1.0 WAP-297 */
-    { "-//OMA//DTD DRMREL 1.0//EN", 0x0E },             /* DRM REL 1.0 */
-    { "-//WIRELESSVILLAGE//DTD CSP 1.0//EN", 0x0F },    /* Wireless Village CSP DTD v1.0 */
-    { "-//WIRELESSVILLAGE//DTD CSP 1.1//EN", 0x10 },    /* Wireless Village CSP DTD v1.1 */
-    { "-//OMA//DTD WV-CSP 1.2//EN", 0x11 },             /* OMA IMPS - CSP protocol DTD v1.2 */
-    { "-//OMA//DTD IMPS-CSP 1.3//EN", 0x12 }            /* This document type is used to carry OMA 
-                                                         * IMPS 1.3 primitives and the information 
-                                                         * elements within. */
-};
+#define NUMBERED(name, strings) \
+    static const wml_externalid_t name##_strings[] = { strings };
+#define ASSIGN(string, number) { string, number },
+#include "wbxml_tokens.def"
 
-#define NUMBER_OF_WML_EXTERNALID sizeof(wml_externalid)/sizeof(wml_externalid[0])
+#define NUMBER_OF_WML_EXTERNALID ((long) sizeof(public_ids_strings)/sizeof(public_ids_strings[0]))
 
 struct wbxml_version_t {
     char *string;
@@ -175,7 +158,7 @@ typedef struct {
 
 typedef struct {
     unsigned char wbxml_version;
-    unsigned char wml_public_id;
+    unsigned long wml_public_id;
     unsigned long character_set;
     unsigned long string_table_length;
     List *string_table;
@@ -349,10 +332,15 @@ static void string_table_output(Octstr *ostr, wml_binary_t **wbxml);
 
 static void xml_error(void)
 {
-    xmlErrorPtr err = xmlGetLastError();
-    Octstr *msg = octstr_format("%s", err->message);
-
+    xmlErrorPtr err; 
+    Octstr *msg;
+    
+    /* we should have an error, but be more sensitive */
+    if ((err = xmlGetLastError()) == NULL)
+        return;
+        
     /* replace annoying line feeds */    
+    msg = octstr_format("%s", err->message);
     octstr_replace(msg, octstr_imm("\n"), octstr_imm(" "));
     error(0,"XML error: code: %d, level: %d, line: %d, %s",
           err->code, err->level, err->line, octstr_get_cstr(msg));
@@ -620,8 +608,8 @@ static int parse_document(xmlDocPtr document, Octstr *charset,
         warning(0, "WBXML: WML without ExternalID, assuming 1.1");
     } else {
         for (i = 0; i < NUMBER_OF_WML_EXTERNALID; i++) {
-            if (octstr_compare(externalID, octstr_imm(wml_externalid[i].string)) == 0) {
-                (*wbxml)->wml_public_id = wml_externalid[i].value;
+            if (octstr_compare(externalID, octstr_imm(public_ids_strings[i].string)) == 0) {
+                (*wbxml)->wml_public_id = public_ids_strings[i].value;
                 debug("parse_document",0,"WBXML: WML with ExternalID <%s>",
                       octstr_get_cstr(externalID));
                 break;
@@ -1326,7 +1314,7 @@ static void wml_binary_destroy(wml_binary_t *wbxml)
 static void wml_binary_output(Octstr *ostr, wml_binary_t *wbxml)
 {
     octstr_append_char(ostr, wbxml->wbxml_version);
-    octstr_append_char(ostr, wbxml->wml_public_id);
+    octstr_append_uintvar(ostr, wbxml->wml_public_id);
     octstr_append_uintvar(ostr, wbxml->character_set);
     octstr_append_uintvar(ostr, wbxml->string_table_length);
 
@@ -1535,28 +1523,28 @@ static int check_do_elements(xmlNodePtr node)
     name_list = gwlist_create();
 
     if ((child = node->children) != NULL) {
-	while (child != NULL) {
-	    if (strcmp(child->name, "do") == 0) {
-		name = get_do_element_name(child);
+        while (child != NULL) {
+            if (child->name && strcmp(child->name, "do") == 0) {
+                name = get_do_element_name(child);
 
-		if (name == NULL) {
-		    error(0, "WML compiler: no name or type in a do element");
-		    return -1;
-		}
+                if (name == NULL) {
+                    error(0, "WML compiler: no name or type in a do element");
+                    return -1;
+                }
 
-		for (i = 0; i < gwlist_len(name_list); i ++)
-		    if (octstr_compare(gwlist_get(name_list, i), name) == 0) {
-			octstr_destroy(name);
-			status = -1;
-			break;
-		    }
-		if (status != -1)
-		    gwlist_append(name_list, name);
-		else
-		    break;
-	    }
-	    child = child->next;
-	}
+                for (i = 0; i < gwlist_len(name_list); i ++)
+                    if (octstr_compare(gwlist_get(name_list, i), name) == 0) {
+                        octstr_destroy(name);
+                        status = -1;
+                        break;
+                    }
+                if (status != -1)
+                    gwlist_append(name_list, name);
+                else
+                    break;
+            }
+            child = child->next;
+        }
     }
 
     gwlist_destroy(name_list, octstr_destroy_item);
@@ -1578,23 +1566,23 @@ static var_esc_t check_variable_name(xmlNodePtr node)
     var_esc_t ret = FAILED;
 
     if ((attr = node->properties) != NULL) {
-	while (attr != NULL) {
-	    if (strcmp(attr->name, "name") == 0) {
-		name = create_octstr_from_node(attr->children);
-		break;
-	    }
-	    attr = attr->next;
-	}
+        while (attr != NULL) {
+            if (attr->name && strcmp(attr->name, "name") == 0) {
+                name = create_octstr_from_node(attr->children);
+                break;
+            }
+            attr = attr->next;
+        }
     }
 
     if (attr == NULL) {
-	error(0, "WML compiler: no name in a setvar element");
-	return FAILED;
+        error(0, "WML compiler: no name in a setvar element");
+        return FAILED;
     }
 
     ret = check_variable_syntax(name, NOESC);
-
     octstr_destroy(name);
+    
     return ret;
 }
 
@@ -1612,24 +1600,24 @@ static Octstr *get_do_element_name(xmlNodePtr node)
     xmlAttrPtr attr; 
 
     if ((attr = node->properties) != NULL) {
-	while (attr != NULL) {
-	    if (strcmp(attr->name, "name") == 0) {
-		name = create_octstr_from_node(attr->children);
-		break;
-	    }
-	    attr = attr->next;
-	}
+        while (attr != NULL) {
+            if (attr->name && strcmp(attr->name, "name") == 0) {
+                name = create_octstr_from_node(attr->children);
+                break;
+            }
+            attr = attr->next;
+        }
 
-	if (attr == NULL) {
-	    attr = node->properties;
-	    while (attr != NULL) {
-		if (strcmp(attr->name, "type") == 0) {
-		    name = create_octstr_from_node(attr->children);
-		    break;
-		}
-		attr = attr->next;
-	    }
-	}
+        if (attr == NULL) {
+            attr = node->properties;
+            while (attr != NULL) {
+                if (attr->name && strcmp(attr->name, "type") == 0) {
+                    name = create_octstr_from_node(attr->children);
+                    break;
+                }
+                attr = attr->next;
+            }
+        }
     }
 
     return name;

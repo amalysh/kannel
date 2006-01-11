@@ -1,4 +1,67 @@
-2005-11-11  Alexander Malysh <amalysh at kannel.org>
+2006-01-10  Stipe Tolj  <stolj at kannel.org>
+  * gw/dlr_[mysql|pgsql].c: adding 'field_dst' to the the DLR manipluation and
+    selection crieria for MySQL and PostgreSQL support. 
+    Thanks to Vicent Chavanis <vincent@telemaque.fr> for a patch.
+    [Msg-Id: <0fb901c61531$cac92b00$9600a8c0@vince>]
+
+2006-01-09  Stipe Tolj  <stolj at kannel.org>
+  * checks/check_[fakesmsc,fakewap,http,httpsmsc_kannel,ppg,sendsms].sh,
+    gw/[other_sms,push,sms,wap]kannel.conf, test/drive_smpp.[c,conf]:
+    use loopback interface IP 127.0.0.1 rather than 'localhost' for the same
+    of 'make check' and various oeprating systems or distros. NLC.
+
+2006-01-09 Aarno Syvanen <as at gni dot ch>
+  * test/iptestppg.txt, test/smstestppg.txt: Removed deiiver-before-timestamp
+  * field from push control document used by check_ppg.sh. Checks should
+  * certainly work without editing.
+
+2006-01-07  Stipe Tolj  <stolj at kannel.org>
+  * checks/check_http.sh: fixing this check, shell variable assignment
+  * gwlib/http.c: server_create() needs to duplicate the certkeyfile Octstr, 
+    otherwise our server will respond one time and the next request is causing
+    a PANIC due to a octstr_destroy() on a non-present variable.
+  * test/test_http.c: need to destroy the global ssl_client_certkey_file 
+    Octstr after we did all requests.
+  
+2006-01-04  Stipe Tolj  <stolj at kannel.org>
+  * utils/start-stop-daemon.c: fixing bug #287 for Solaris platform.
+    Thanks to aivars.kalvans@tietoenator.com for the report and patch.
+
+2005-12-29  Stipe Tolj  <stolj at kannel.org>
+  * gwlib/conn.c: fixing bug #284 which causes core dump while NULL is passed
+    for conn in conn_unregsiter(). This "may" be a more general problem as it
+    seems that this may be a racecondition. Need to observe more.
+  * gw/wapbox.c: fixing bug #284 which causes wapbox to core dump in
+    dispatch_datagram while a NULL value is given. We need to react smoothly
+    by discarding the "failing" WDP/UDP datagram and continue operations.
+    Thanks to Mindaugas for reporting the bugs.
+        
+2005-12-26  Stipe Tolj  <stolj at kannel.org>
+  * doc/userguide/userguide.xml: fixing documentation references for the
+    change from 'mysql-[username|password]' to '[username|password]' in the
+    'mysql-connection' group. Thanks to Hillel <hillel@ecommunicate.co.za>
+    for pointing to this missed issue.
+    [Msg-Id: <LBEAKAELDENCIDOPBLGCCECDDBAA.hillel@ecommunicate.co.za>]
+        
+2005-12-26  Stipe Tolj  <stolj at kannel.org>
+  * gw/wml_compiler.c, gw/wbxml_tokens.def: added registered public IDs
+    for external WML IDs as defined by OMA. Moved array to .def file to
+    use pre-processor macro magic. We would need to re-write the WML
+    definition from gw/wml_compiler.c and gw/wml_definitions.h to use
+    the more generic pre-processor magic as for wap/wsp_strings.[ch|def].
+    
+2005-12-22  Stipe Tolj  <stolj at kannel.org>
+  * gw/wml_compiler.c: fixing bug #282, which caused a segfault while
+    trying to access the xmlErrorPtr type, but libxml2's xmlGetLastError()
+    didn't provide any data for it. Which means the libxml2 parsing broke,
+    but we don't get any valid xmlGetError() values?! Thanks to Mindaugas
+    again for reporting this issue and provide also the fix.
+    
+2005-12-22  Stipe Tolj  <stolj at kannel.org>
+  * gw/wml_compiler.c: fixing bug #283, which caused a segfault while
+    passing NULL'ed arguments to strcmp(). Thanks to Mindaugas for report.
+
+2005-12-18  Alexander Malysh <amalysh at kannel.org>
   * gw/smsc/smsc_smpp.c: Implemented data_sm handling for MO. Also
     rearranged code to avoid code duplication.
     Replaced dump_pdu with macros in order to save function call.
