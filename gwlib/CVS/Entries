@@ -3,7 +3,6 @@
 /accesslog.c/1.9/Fri Nov 11 16:58:28 2005//
 /accesslog.h/1.7/Fri Nov 11 16:58:28 2005//
 /cfg.c/1.30/Fri Nov 11 16:58:28 2005//
-/cfg.def/1.116/Tue Jan 10 11:53:51 2006//
 /cfg.h/1.14/Fri Nov 11 16:58:28 2005//
 /charset.c/1.21/Fri Nov 11 16:58:29 2005//
 /charset.h/1.11/Fri Nov 11 16:58:29 2005//
@@ -80,4 +79,5 @@
 /xmlrpc.c/1.19/Fri Nov 11 16:58:29 2005//
 /xmlrpc.h/1.13/Fri Nov 11 16:58:29 2005//
 /octstr.c/1.170/Wed Jan 18 14:44:49 2006//
+/cfg.def/1.117/Sun Jan 29 15:34:42 2006//
 D
