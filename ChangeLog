@@ -1,3 +1,26 @@
+2006-01-13  Stipe Tolj  <stolj at kannel.org>
+  * configure[.in]: reverting changes from Andreas in rev 1.154 for setting
+    both (i386 and ppc) architecture flags for darwin (MacOS X). This causes
+    errors with -MM cfalgs and we should build for the architecture we run.
+    Thanks to Cesar Gutierrez Corea <cgcorea@gmail.com> for his reporting
+    and Aarno for investigating this issue further on.
+    [Msg-Id: <60387C21-74FA-4E5F-B61A-AA6C3D963BDA@gmail.com>]
+  
+2006-01-12  Stipe Tolj  <stolj at kannel.org>
+  * utils/run-checks: use /bin/sh instead of /bin/bash for the sake of
+    platforms that don't come with a standard bash, ie. FreeBSD.
+    
+2006-01-12  Stipe Tolj  <stolj at kannel.org>
+  * gwlib/octstr.c: adding support for the va_list handling on FreeBSD AMD64.
+    Thanks to Cesar Gutierrez Corea <cgcorea@gmail.com> for provided support.
+    [Msg-Id: <A948E691-FCE1-4CBD-A18D-DDFD71320CAA@gmail.com>]
+ 
+2006-01-12  Stipe Tolj  <stolj at kannel.org>
+  * checks/check_http.sh: use /bin/sh instead of /bin/bash for the sake of
+    platforms that don't come with a standard bash, ie. FreeBSD.
+  * checks/check_sendsms.sh: add sleep time after URL calls in order to give
+    the boxes chance to write to the log before our tests run.
+  
 2006-01-10  Alexander Malysh <amalysh at kannel.org>
   * gw/smsc/smpp_pdu.[ch]: commited patch that add all known error codes up
     to SMPPv5. Thanks to Peter Christensen for provided patch.
