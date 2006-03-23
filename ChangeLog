@@ -1,3 +1,37 @@
+2006-02-28  Alexander Malysh <amalysh at kannel.org>
+  * gwlib/conn.c: fixed deadlock when first thread made conn_unregister call
+    and the FDSet thread at the same time called conn_callback
+    function. Then the first thread locked [in|out] lock and wait for unregister
+    completion but the fdset thread tried to lock [in|out].
+    Also fixed some gcc4 warnings.
+    This commit should fix #302 and some others http client related.
+
+2006-02-23  Stipe Tolj  <stolj at kannel.org>
+  * gw/wap-appl.c: apply higher log-level usage for octstr_dump() in 
+    decode_bearer_indication() and check_application_headers(). NLC.
+  
+2006-02-23  Stipe Tolj  <stolj at kannel.org>
+  * gw/wap-appl.c: fixing a bug causing wapbox to panic while we handle PPG
+    related S_Suspend_Ind type PDU but no PPG is used at all.
+  
+2006-02-23  Stipe Tolj  <stolj at kannel.org>
+  * wap/wtp.c: fixing bug #310, causing wapbox to panic while gwlist_append()
+    produces an assertion error if a malformed WTP datagram is tried to be
+    processes and we try to send an RcvError PDU deducing the TID value from
+    the WTP datagram, causing us to push the WAPEvent into a wrong list.
+    
+2006-02-23  Stipe Tolj  <stolj at kannel.org>
+  * gwlib/octstr.[ch]: adding a more flexible octstr_dump() call via a variadic
+    macro call. Allowing a third argument specifying the log-level of the 
+    Octstr dump. Ie. octstr_dump(ost, 0, GW_ERROR) will dump in ERROR log level.
+    The variadic macro will allow the current usage without a third parameter 
+    and hence doesn't require mass patching of existing code. This more flexible
+    octstr_dump() is intended to be used for higher log level runs, where we
+    still want to dump particular data in case we run into warnings or errors.
+    Running in debug log level for real-life production systems in order to get
+    full data dumps is not suitable for a long period, so this allows a shorted
+    log level with reduced log sizes, but octstr_dumps where we need.
+  
 2006-02-21  Stipe Tolj  <stolj at kannel.org>
   * test/fakesmsc.c: fixing option switches '-r' to '-z' for number randomization, 
     which clashed with the '-r' for port specify'ing.

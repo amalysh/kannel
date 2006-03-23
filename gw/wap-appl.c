@@ -359,7 +359,7 @@ static void main_thread(void *arg)
 
     case S_Suspend_Ind:
 	    sid = ind->u.S_Suspend_Ind.session_id;
-        if (wap_push_ppg_have_push_session_for_sid(sid)) 
+        if (have_ppg && wap_push_ppg_have_push_session_for_sid(sid)) 
             indicate_push_suspend(ind);
 	    wap_event_destroy(ind);
 	    break;
@@ -1492,8 +1492,8 @@ static void check_application_headers(List **headers,
             http_header_add(*application_headers, "Accept-Application", 
                             appid_value);
         else {
-	    error(0, "OTA: Unknown application is, skipping: ");
-            octstr_dump(coded_octstr, 0);
+            error(0, "OTA: Unknown application is, skipping: ");
+            octstr_dump(coded_octstr, 0, GW_ERROR);
         }
 
         i++;  
@@ -1556,8 +1556,8 @@ static void decode_bearer_indication(List **headers, List **bearer_headers)
        http_header_dump(*bearer_headers);
        return;
     } else {
-       error(0, "APPL: Illegal bearer indication value, skipping");
-       octstr_dump(coded_octstr, 0);
+       error(0, "APPL: Illegal bearer indication value, skipping:");
+       octstr_dump(coded_octstr, 0, GW_ERROR);
        http_destroy_headers(*bearer_headers);
        return;
     }

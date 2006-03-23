@@ -6,7 +6,6 @@
 /cfg.h/1.14/Fri Nov 11 16:58:28 2005//
 /charset.c/1.21/Fri Nov 11 16:58:29 2005//
 /charset.h/1.11/Fri Nov 11 16:58:29 2005//
-/conn.c/1.78/Tue Jan 10 11:56:28 2006//
 /conn.h/1.31/Fri Nov 11 16:58:29 2005//
 /counter.c/1.14/Fri Nov 11 17:53:13 2005//
 /counter.h/1.8/Fri Nov 11 16:58:29 2005//
@@ -44,7 +43,6 @@
 /gwthread-pthread.c/1.49/Fri Nov 11 17:30:01 2005//
 /gwthread.h/1.21/Fri Nov 11 17:30:01 2005//
 /html-entities.def/1.4/Fri Nov 11 16:58:28 2005//
-/http.h/1.67/Fri Nov 11 17:30:01 2005//
 /list.c/1.42/Fri Nov 11 16:58:29 2005//
 /list.h/1.24/Fri Nov 11 16:58:29 2005//
 /log.c/1.50/Fri Nov 11 16:58:29 2005//
@@ -53,9 +51,7 @@
 /md5.h/1.6/Fri Nov 11 16:58:29 2005//
 /mime.c/1.12/Tue Jan 10 11:53:43 2006//
 /mime.h/1.8/Fri Nov 11 16:58:29 2005//
-/octstr.c/1.170/Wed Jan 18 14:44:49 2006//
 /octstr.c.debug/1.9/Fri Nov 11 16:58:29 2005//
-/octstr.h/1.89/Fri Nov 11 16:58:29 2005//
 /octstr.h.debug/1.7/Fri Nov 11 16:58:28 2005//
 /parse.c/1.15/Fri Nov 11 16:58:29 2005//
 /parse.h/1.8/Fri Nov 11 16:58:29 2005//
@@ -79,5 +75,9 @@
 /utils.h/1.28/Fri Nov 11 16:58:28 2005//
 /xmlrpc.c/1.19/Fri Nov 11 16:58:29 2005//
 /xmlrpc.h/1.13/Fri Nov 11 16:58:29 2005//
-/http.c/1.238/Fri Feb 10 18:05:39 2006//
+/http.c/1.238/Tue Feb 28 18:04:55 2006//
+/octstr.c/1.171/Tue Feb 28 18:04:55 2006//
+/octstr.h/1.90/Tue Feb 28 18:04:55 2006//
+/http.h/1.67/Tue Feb 28 18:05:25 2006//
+/conn.c/1.80/Tue Feb 28 18:14:39 2006//
 D
