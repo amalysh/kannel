@@ -1,4 +1,3 @@
-/cookies.c/1.17/Fri Nov 11 17:30:02 2005//
 /cookies.h/1.6/Fri Nov 11 16:58:33 2005//
 /timers.c/1.5/Fri Nov 11 16:58:33 2005//
 /timers.h/1.4/Fri Nov 11 16:58:33 2005//
@@ -61,4 +60,5 @@
 /wtp_resp_states.def/1.12/Fri Nov 11 16:58:33 2005//
 /wtp_tid.c/1.5/Fri Nov 11 16:58:33 2005//
 /wtp_tid.h/1.4/Fri Nov 11 16:58:33 2005//
+/cookies.c/1.18/Fri Feb 10 17:28:41 2006//
 D
