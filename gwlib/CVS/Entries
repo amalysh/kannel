@@ -6,7 +6,6 @@
 /cfg.h/1.14/Fri Nov 11 16:58:28 2005//
 /charset.c/1.21/Fri Nov 11 16:58:29 2005//
 /charset.h/1.11/Fri Nov 11 16:58:29 2005//
-/conn.h/1.31/Fri Nov 11 16:58:29 2005//
 /counter.c/1.14/Fri Nov 11 17:53:13 2005//
 /counter.h/1.8/Fri Nov 11 16:58:29 2005//
 /date.c/1.18/Fri Nov 11 16:58:29 2005//
@@ -47,8 +46,6 @@
 /log.h/1.23/Fri Nov 11 16:58:29 2005//
 /md5.c/1.7/Fri Nov 11 16:58:29 2005//
 /md5.h/1.6/Fri Nov 11 16:58:29 2005//
-/mime.c/1.12/Tue Jan 10 11:53:43 2006//
-/mime.h/1.8/Fri Nov 11 16:58:29 2005//
 /octstr.c.debug/1.9/Fri Nov 11 16:58:29 2005//
 /octstr.h.debug/1.7/Fri Nov 11 16:58:28 2005//
 /parse.c/1.15/Fri Nov 11 16:58:29 2005//
@@ -75,9 +72,12 @@
 /xmlrpc.h/1.13/Fri Nov 11 16:58:29 2005//
 /octstr.c/1.171/Tue Feb 28 18:04:55 2006//
 /octstr.h/1.90/Tue Feb 28 18:04:55 2006//
-/conn.c/1.82/Sun Mar  5 14:33:26 2006//
 /gw-prioqueue.c/1.5/Sun Mar  5 14:33:26 2006//
 /gwmem-check.c/1.31/Sun Mar  5 14:33:26 2006//
 /http.c/1.240/Sun Mar  5 14:36:07 2006//
 /http.h/1.68/Sun Mar  5 14:36:07 2006//
+/conn.c/1.83/Sun Mar  5 14:51:33 2006//
+/conn.h/1.32/Sun Mar  5 14:51:33 2006//
+/mime.c/1.13/Sun Mar  5 14:51:33 2006//
+/mime.h/1.9/Sun Mar  5 14:51:33 2006//
 D
