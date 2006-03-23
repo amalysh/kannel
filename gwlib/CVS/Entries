@@ -75,9 +75,9 @@
 /xmlrpc.h/1.13/Fri Nov 11 16:58:29 2005//
 /octstr.c/1.171/Tue Feb 28 18:04:55 2006//
 /octstr.h/1.90/Tue Feb 28 18:04:55 2006//
-/http.h/1.67/Tue Feb 28 18:05:25 2006//
 /conn.c/1.82/Sun Mar  5 14:33:26 2006//
 /gw-prioqueue.c/1.5/Sun Mar  5 14:33:26 2006//
 /gwmem-check.c/1.31/Sun Mar  5 14:33:26 2006//
-/http.c/1.239/Sun Mar  5 14:33:26 2006//
+/http.c/1.240/Sun Mar  5 14:36:07 2006//
+/http.h/1.68/Sun Mar  5 14:36:07 2006//
 D
