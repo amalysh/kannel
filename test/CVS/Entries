@@ -8,7 +8,6 @@
 /drive_smpp.c/1.18/Tue Jan 10 11:56:28 2006//
 /drive_smpp.conf/1.5/Tue Jan 10 11:56:28 2006//
 /drive_wapbox.c/1.30/Fri Nov 11 16:58:32 2005//
-/fakesmsc.c/1.28/Fri Nov 11 16:58:32 2005//
 /fakewap.c/1.49/Fri Nov 11 16:58:32 2005//
 /header_test/1.2/Fri Nov 11 16:58:32 2005//
 /hello.wml/1.2/Fri Nov 11 16:58:32 2005//
@@ -61,4 +60,5 @@
 /wapproxy.c/1.9/Fri Nov 11 16:58:32 2005//
 /whitelist.txt/1.1/Fri Nov 11 16:58:32 2005//
 /wml_tester.c/1.27/Tue Jan 10 11:53:51 2006//
+/fakesmsc.c/1.29/Tue Feb 21 17:14:37 2006//
 D
