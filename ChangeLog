@@ -1,3 +1,151 @@
+2006-05-09  Alexander Malysh <amalysh at kannel.org>
+  * gw/smsbox.c: applied patch which resolved a number of memory leaks and
+    potential segmentation faults in the smsbox_req_handle.
+    Thanks to Peter Christensen <pch at coolsystems.dk> for provided patch.
+    [Msg-Id: <445DFAFC.6030807@coolsystems.dk>]
+
+2006-05-09  Alexander Malysh <amalysh at kannel.org>
+  * doc/userguide/userguide.xml,gw/smsc/smsc_smpp.c,gwlib/cfg.def: added new
+    SMPP config options 'bind-addr-ton' and 'bind-addr-npi' in order to be able
+    to define bind settings that some SMSCs require.
+
+2006-05-09  Stipe Tolj  <stolj at kannel.org>
+  * Makefile.in: make sure we do NOT link in object files from the progs itself,
+    they contain int/void main(), and we don't want that inside the libgw.a in
+    order to allow users re-usage of the code inside the lib. Otherwise we would
+    get a 'duplicate define main()' link error, if an external module tries to
+    link against libgw.a after a successfull install.
+    
+2006-05-09  Stipe Tolj  <stolj at kannel.org>
+  * gw/bb_store.c, gw/bearerbox.[ch]: detach the two queues 'incoming_sms' and
+    'outgoing_sms' from the binding of bb_store.c. Now we pass a dispatcher
+    function as argument to store_load() in order to let it access local scoped
+    variables in the callers space.
+
+2006-05-08  Stipe Tolj  <stolj at kannel.org>
+  * Makefile.in: adding installing of all .h and .def files in the install 
+    target, including the gw directory. This is required if external modules
+    implementing own functionality will use gwlib and gw functions that are
+    installed to the system.
+
+2006-05-05  Alexander Malysh <amalysh at kannel.org>
+  * gw/smsc/smsc_smpp.c: fixed #337. We must set RECONNECT status on connection
+    before we put local queued messages into global queue.
+    Thanks to <pch at coolsystems.dk> for patch.
+
+2006-04-28  Alexander Malysh <amalysh at kannel.org>
+  * gwlib/list.h: added example to the comment how to use gwlist_sort function.
+    Thanks to Wilfried Goesgens <w.goesgens at chaosindustries.de> for patch.
+
+2006-04-28  Alexander Malysh <amalysh at kannel.org>
+  * gw/smsbox.c: fixed memory leak.
+    Thanks to Rafael <rafael at atgcaribbean.com> for patch.
+    [Msg-Id: <44510365.8070000@atgcaribbean.com>]
+
+2006-04-24 Andreas Fink <andreas@fink.org>
+  * gw/smsc/smsc_at.c, gw/msg.h, gw/smsbox.c, gw/urltrans.c
+    added new parameter %f to show the SMSC number from which an incoming sms
+    is arriving. Only valid for AT.
+
+2006-04-19  Alexander Malysh <amalysh at kannel.org>
+  * gw/smsc/smsc_http.c: We need to refresh the connect time when status
+    is changing to SMSCCONN_ACTIVE otherwise connect time has no sense.
+    Thanks to Vincent Chavanis <vincent at telemaque.fr> for provided patch.
+    [Msg-Id: <0eda01c66398$5bc7fe10$9600a8c0@vince>]
+
+2006-04-07  Alexander Malysh <amalysh at kannel.org>
+  * gw/smscconn.c: fix for prev. patch that throughput was not set.
+    Thanks to Vincent Chavanis <vincent at telemaque.fr> for pointing to this.
+
+2006-04-07  Alexander Malysh <amalysh at kannel.org>
+  * gw/smscconn.c, gw/smscconn_p.h, gw/smsc/smsc_emi.c, gw/smsc/smsc_fake.c,
+    gw/smsc/smsc_http.c, gw/smsc/smsc_smasi.c, gw/smsc/smsc_smpp.c: applied patch
+    that changes throughput from integer to double for more precise throughput
+    configuration.
+    Thanks to Vincent Chavanis <vincent at telemaque.fr> for provided patch.
+    [Msg-Id: <1e2901c659a5$09339850$9600a8c0@vince>]
+
+2006-04-07  Alexander Malysh <amalysh at kannel.org>
+  * gw/ota_prov.c: fixed memory leaks.
+    Thanks to Rene Kluwen <rene.kluwen at chimit.nl> for provided patch.
+    [Msg-Id: <AFEHKJODIBGCKGHIDIPHCEELCBAA.rene.kluwen@chimit.nl>]
+
+2006-04-01  Alexander Malysh <amalysh at kannel.org>
+  * gw/bb_smscconn.c, gw/smsbox.c, gw/smscconn.c, gw/urltrans.c,
+  * gw/wap_push_ppg_pushuser.c gwlib/http.c gwlib/regex.[ch]: get rid of
+    gw_regex_matches function because we already have gw_regex_match_pre with
+    the same functionality. Additionally fixed coding style mess in gw/urltrans.c.
+
+2006-04-01  Alexander Malysh <amalysh at kannel.org>
+  * gwlib/octstr.c: fixed octstr_delete_matching. Don't know how it
+    worked before?!?
+
+2006-03-28  Alexander Malysh <amalysh at kannel.org>
+  * gw/smsbox.c: applied patch fixes race condition for the case when
+    immediate-sendsms-reply=false (which is default). In this case we
+    put uuid into store dictionary after we sent message to bearerbox.
+    Then another thread which does read_from_bearerbox tried to delete
+    not yet existant uuid from store dirctionary which leads to stale
+    sendsms clients.
+    Thanks to Dziugas Baltrunas <dziugas at gmail.com> for patch.
+    [Msg-Id: <943470880603231203hd97b1e5nffff4c8b2c455358@mail.gmail.com>]
+
+2006-03-28  Alexander Malysh <amalysh at kannel.org>
+  * gw/smsc/smsc_http.c: patch sets the smsc_id in incoming messages.
+    Otherwise, they are unable to be routed (smsbox_list empty).
+    Thanks to Rene Kluwen <rene.kluwen at chimit.nl>.
+    [Msg-Id: <AFEHKJODIBGCKGHIDIPHIEBJCBAA.rene.kluwen@chimit.nl>]
+
+2006-03-28  Alexander Malysh <amalysh at kannel.org>
+  * gw/shared.[ch], gw/smsbox.c, gw/wapbox.c, utils/mtbatch.c: changed
+    call interface to read_from_box so that we can set timeout and
+    differentiate error from timeout. See #321.
+
+2006-03-24  Stipe Tolj  <stolj at kannel.org>
+  * wap/wsp.h, wap/wsp_strings.def: adding new WSP 1.6 headers. NLC.
+
+2006-03-23  Alexander Malysh <amalysh at kannel.org>
+  * gwlib/http.c: fixed non conformance to RFC when client sends wrong request
+    we just closed socket. With this change we return HTTP 400 Bad request error.
+    Thanks to Dziugas Baltrunas <dziugas at gmail.com> for pointing to this.
+
+2006-03-23  Alexander Malysh <amalysh at kannel.org>
+  * gw/bb_boxc.c: fixed compiler warning in function when using 64bit system.
+    Thanks to Vincent CHAVANIS <vincent at telemaque.fr> for pointing to this.
+
+2006-03-23  Alexander Malysh <amalysh at kannel.org>
+  * configure.in: added AC_C_INLINE check again. That was wrongly reverted
+    with a last commit from Stipe.
+
+2006-03-22  Stipe Tolj  <stolj at kannel.org>
+  * configure[.in], gwlib/charset.h: reverting Andreas commit regarding
+    libxml2 header due to -1 veto vote by Alex and Stipe.
+  
+2006-03-17  Alexander Malysh <amalysh at kannel.org>
+  * gw/smsc/smsc_http.c: Feature add #322. Added Clickatell HTTP interface.
+    Thanks to Rene Kluwen <rene.kluwen at chimit.nl> for provided patch.
+
+2006-03-17  Alexander Malysh <amalysh at kannel.org>
+  * gwlib/octstr.c: Fixed #323.
+    Thanks to Rene Kluwen <rene.kluwen at chimit.nl> for provided patch.
+
+2006-03-14  Alexander Malysh <amalysh at kannel.org>
+  * gw/heartbeat.c: fixed #320 that heartbeat_stop crashed when no heartbeat
+    at all is activated.
+    Thanks to Rene Kluwen <rene.kluwen at chimit.nl> for provided patch.
+
+2006-03-14  Alexander Malysh <amalysh at kannel.org>
+  * gw/smsc/smpp_pdu.def: fixed #317. SMPP v3.4 defines that validity_period
+    and schedule_delivery_time unused in deliver_sm but SMPP v3.3 states that
+    parameters for the deliver_sm are the same as for submit_sm. So make length
+    of validity_period and schedule_delivery_time 17 as for submit_sm. It doesn't
+    break SMPP v3.4 clients because these values are NULTERMINATED.
+
+2006-03-14  Alexander Malysh <amalysh at kannel.org>
+  * gwlib/mime.[ch]: minimal additional patch for the mime module, to allow
+    client/user access to the start element.
+    Thanks to Paul Bagyenda <bagyenda at dsmagic.com> for provided patch.
+
 2006-03-05  Alexander Malysh <amalysh at kannel.org>
   * gwlib/conn.[ch]: added new function 'use_global_trusted_ca_file' that
     allow setting of global trusted ca w/o a need to call conn_config_ssl.

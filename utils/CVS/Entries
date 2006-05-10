@@ -17,7 +17,6 @@
 /kannel-stable-rh7.spec/1.8/Fri Nov 11 16:58:34 2005//
 /makedist/1.13/Fri Nov 11 16:58:34 2005//
 /mtbatch.1/1.1/Fri Nov 11 16:58:34 2005//
-/mtbatch.c/1.7/Fri Nov 11 16:58:34 2005//
 /pixmapgen.pl/1.1/Fri Nov 11 16:58:34 2005//
 /run-checks/1.7/Wed Jan 18 14:44:49 2006//
 /run_kannel_box.8/1.1/Fri Nov 11 16:58:34 2005//
@@ -34,4 +33,5 @@
 /wbmp.c/1.9/Fri Nov 11 16:58:34 2005//
 /wbmp.h/1.7/Fri Nov 11 16:58:34 2005//
 /win1257unicode.txt/1.1/Fri Nov 11 16:58:34 2005//
+/mtbatch.c/1.8/Fri Mar 17 11:12:15 2006//
 D

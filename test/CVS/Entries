@@ -35,7 +35,6 @@
 /test_mime_multipart.c/1.5/Fri Nov 11 16:58:32 2005//
 /test_msg.c/1.13/Fri Nov 11 16:58:32 2005//
 /test_octstr_dump.c/1.6/Fri Nov 11 16:58:32 2005//
-/test_octstr_format.c/1.8/Fri Nov 11 16:58:32 2005//
 /test_octstr_immutables.c/1.6/Fri Nov 11 16:58:32 2005//
 /test_ota.c/1.4/Fri Nov 11 16:58:32 2005//
 /test_pap.c/1.6/Fri Nov 11 16:58:32 2005//
@@ -61,4 +60,5 @@
 /whitelist.txt/1.1/Fri Nov 11 16:58:32 2005//
 /wml_tester.c/1.27/Tue Jan 10 11:53:51 2006//
 /fakesmsc.c/1.29/Tue Feb 21 17:14:37 2006//
+/test_octstr_format.c/1.8/Tue Mar 14 20:20:29 2006//
 D

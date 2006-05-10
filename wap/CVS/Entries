@@ -9,7 +9,6 @@
 /wap_events.def/1.29/Fri Nov 11 16:58:33 2005//
 /wap_events.h/1.8/Fri Nov 11 16:58:33 2005//
 /wsp.c/1.4/Fri Nov 11 16:58:33 2005//
-/wsp.h/1.10/Fri Nov 11 16:58:33 2005//
 /wsp_caps.c/1.6/Fri Nov 11 16:58:34 2005//
 /wsp_caps.h/1.4/Fri Nov 11 16:58:34 2005//
 /wsp_headers.c/1.23/Fri Nov 11 17:30:02 2005//
@@ -29,7 +28,6 @@
 /wsp_server_session_states.def/1.12/Fri Nov 11 16:58:33 2005//
 /wsp_session.c/1.22/Fri Nov 11 16:58:33 2005//
 /wsp_strings.c/1.9/Fri Nov 11 16:58:33 2005//
-/wsp_strings.def/1.17/Fri Nov 11 17:30:02 2005//
 /wsp_strings.h/1.6/Fri Nov 11 16:58:33 2005//
 /wsp_unit.c/1.20/Fri Nov 11 16:58:33 2005//
 /wtls-secmgr.c/1.7/Fri Nov 11 16:58:33 2005//
@@ -61,4 +59,6 @@
 /wtp_tid.h/1.4/Fri Nov 11 16:58:33 2005//
 /cookies.c/1.19/Tue Feb 21 11:36:55 2006//
 /wtp.c/1.10/Tue Feb 28 18:04:56 2006//
+/wsp.h/1.11/Tue Mar 28 11:53:12 2006//
+/wsp_strings.def/1.18/Tue Mar 28 11:53:12 2006//
 D
