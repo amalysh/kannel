@@ -9,7 +9,6 @@
 /smpp_pdu_opt.def/1.5/Sun Dec 18 19:54:08 2005//
 /smsc.c/1.8/Sun Dec 18 19:54:08 2005//
 /smsc.h/1.4/Sun Dec 18 19:54:08 2005//
-/smsc_at.c/1.29/Wed May 10 12:17:18 2006//
 /smsc_at.h/1.11/Wed May 10 12:17:18 2006//
 /smsc_cgw.c/1.14/Sun Dec 18 19:54:08 2005//
 /smsc_cimd.c/1.4/Sun Dec 18 19:54:08 2005//
@@ -17,7 +16,6 @@
 /smsc_emi.c/1.15/Wed May 10 12:17:18 2006//
 /smsc_emi_x25.c/1.6/Sun Dec 18 19:54:08 2005//
 /smsc_fake.c/1.17/Wed May 10 12:17:18 2006//
-/smsc_http.c/1.48/Wed May 10 12:17:18 2006//
 /smsc_ois.c/1.7/Sun Dec 18 19:54:08 2005//
 /smsc_oisd.c/1.11/Sun Dec 18 19:54:08 2005//
 /smsc_p.h/1.9/Sun Dec 18 19:54:08 2005//
@@ -27,4 +25,6 @@
 /smsc_smpp.c/1.91/Wed May 10 12:17:18 2006//
 /smsc_soap.c/1.16/Sun Dec 18 19:54:08 2005//
 /smsc_wrapper.c/1.8/Sun Dec 18 19:54:08 2005//
+/smsc_http.c/1.49/Thu May 11 14:15:37 2006//
+/smsc_at.c/1.30/Thu May 11 14:36:36 2006//
 D
