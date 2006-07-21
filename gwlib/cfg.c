@@ -152,7 +152,16 @@ struct Cfg {
 };
 
 
-static int is_allowed_in_group(Octstr *group, Octstr *variable)
+/********************************************************************
+ * Section providing hooks to external modules to apply their specific
+ * is_allowed_in_group() and is_single_group() with their own
+ * foobar-cfg.def.
+ */
+
+static List *allowed_hooks;
+static List *single_hooks;
+
+static int core_is_allowed_in_group(Octstr *group, Octstr *variable)
 {
     Octstr *groupstr;
     
@@ -181,7 +190,7 @@ static int is_allowed_in_group(Octstr *group, Octstr *variable)
 }
 
 
-static int is_single_group(Octstr *query)
+static int core_is_single_group(Octstr *query)
 {
     #define OCTSTR(name)
     #define SINGLE_GROUP(name, fields) \
@@ -193,6 +202,43 @@ static int is_single_group(Octstr *query)
     #include "cfg.def"
     return 0;
 }
+
+
+static int is_allowed_in_group(Octstr *group, Octstr *variable)
+{
+    long i;
+    int r = 0;
+
+    for (i = 0; i < gwlist_len(allowed_hooks); ++i) {
+        r += ((int(*)(Octstr *, Octstr *))
+            gwlist_get(allowed_hooks, i))(group, variable);
+    }
+
+    return (r > 0);
+}
+
+
+static int is_single_group(Octstr *query)
+{
+    long i;
+    int r = 0;
+
+    for (i = 0; i < gwlist_len(single_hooks); ++i) {
+        r += ((int(*)(Octstr *))
+            gwlist_get(single_hooks, i))(query);
+    }
+
+    return (r > 0);
+}
+
+
+void cfg_add_hooks(void *allowed, void *single)
+{
+    gwlist_append(allowed_hooks, allowed);
+    gwlist_append(single_hooks, single);
+}
+
+
 
 
 static int add_group(Cfg *cfg, CfgGroup *grp)
@@ -247,6 +293,14 @@ Cfg *cfg_create(Octstr *filename)
     cfg->filename = octstr_duplicate(filename);
     cfg->single_groups = dict_create(64, destroy_group);
     cfg->multi_groups = dict_create(64, destroy_group_list);
+
+   /* make sure we put our own core hooks into the lists */
+    allowed_hooks = gwlist_create();
+    single_hooks = gwlist_create();
+
+    gwlist_append(allowed_hooks, &core_is_allowed_in_group);
+    gwlist_append(single_hooks, &core_is_single_group);
+
     return cfg;
 }
 
@@ -316,7 +370,7 @@ static List *expand_file(Octstr *file, int forward)
     List *lines; 
     List *expand; 
     long lineno; 
-    CfgLoc *loc; 
+    CfgLoc *loc = NULL; 
  
     os = octstr_read_file(octstr_get_cstr(file)); 
     if (os == NULL) 
@@ -326,15 +380,29 @@ static List *expand_file(Octstr *file, int forward)
     lineno = 0; 
     expand = gwlist_create(); 
               
-    while ((line = gwlist_extract_first(lines)) != NULL) { 
-        ++lineno; 
-        loc = cfgloc_create(file); 
-        loc->line_no = lineno; 
-        loc->line = line; 
-        if (forward) 
-            gwlist_append(expand, loc); 
-        else 
-            gwlist_insert(expand, 0, loc); 
+    while ((line = gwlist_extract_first(lines)) != NULL) {
+    	if (loc == NULL) {
+            ++lineno; 
+            loc = cfgloc_create(file); 
+            loc->line_no = lineno;
+            loc->line = octstr_create("");
+            if (forward) 
+                gwlist_append(expand, loc); 
+            else 
+                gwlist_insert(expand, 0, loc);
+        }
+        /* check for escape and then add to existing loc */
+        if (octstr_get_char(line, octstr_len(line) - 1) == '\\') {
+            octstr_delete(line, octstr_len(line) - 1, 1);
+            octstr_append(loc->line, line); 
+            /* check for second escape */
+            if (octstr_get_char(line, octstr_len(line) - 1) == '\\')
+                loc = NULL;
+        } else {
+            octstr_append(loc->line, line);
+            loc = NULL;
+        }
+        octstr_destroy(line);
     } 
     
     /* 

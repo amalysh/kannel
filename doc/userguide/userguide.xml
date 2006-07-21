@@ -1043,7 +1043,27 @@
 	true, false, yes, no, on, off, 0 or 1. Other values are
 	treated as 'true' while if the variable is not present at all,
 	it is treated as being 'false'.</para>
-	
+
+	<para>In order to make some configuration lines more readable
+	you may use the delimiter '\' at the end of a line to wrap
+	and concatenate the next line up to the current line. Here is 
+	an example:
+
+<programlisting>
+1    # A group with a wrapped alias line
+2    group = sms-service
+3    keyword = hello
+4    aliases = hallo;haalloo;\
+5      heelloo;haelloo;healloo
+5    text = "Hello world!"
+</programlisting>
+ 
+     The above example shows how a list for various alias keywords
+     is wrapped to two lines using the line wrap delimiter. In order
+     to use the delimiter '\' itself, you need to escape it via a
+     prefixed '\' itself. So this is '\\' to escape the wrapping
+     function and use the character in the string.</para>
+     
 </sect2>
 
 <sect2 id="includes">
@@ -5090,6 +5110,24 @@ ssl-certkey-file
      <entry><literal>hostname</literal></entry>
      <entry valign="bottom">
         The machine in which the bearerbox is. 
+     </entry></row>
+
+   <row><entry><literal>bearerbox-port (o)</literal></entry>
+     <entry>port-number</entry>
+     <entry valign="bottom">
+        This is the port number to which smsbox will connect bearerbox.
+        If not given <literal>smsbox-port</literal> from core group used.
+     </entry></row>
+	  
+   <row><entry><literal>bearerbox-port-ssl (o)</literal></entry>
+     <entry>bool</entry>
+     <entry valign="bottom">
+         If set to true, the smsbox connection will be SSL-enabled.
+	 Your smsbox will connect using SSL to the bearerbox
+	 then. This is used to secure communication between bearerbox
+	 and smsboxes in case they are in separate networks operated and
+	 the TCP communication is not secured on a lower network layer.
+         If not given <literal>smsbox-port-ssl</literal> from core group used.
      </entry></row>
 
    <row><entry><literal>smsbox-id (o)</literal></entry>

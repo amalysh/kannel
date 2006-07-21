@@ -1,3 +1,52 @@
+2006-07-12  Alexander Malysh <amalysh at kannel.org>
+  * doc/userguide/userguide.xml, gw/smsbox.c, gwlib/cfg.def: applied patch
+    that adds two new config options to smsbox group: bearerbox-port and
+    bearerbox-port-ssl. This patch should help external modules at least
+    sqlbox now.
+
+2006-07-07  Stipe Tolj  <stolj at kannel.org>
+  * gw/smsc/smpp_pdu.c: added a new string for smpp_error_to_string() 
+    indicating that we have a value in the vendor-specific range. NLC.
+  * gw/smsc/smsc_http.c: changed email reference. NLC.
+
+2006-07-05  Stipe Tolj  <stolj at kannel.org>
+  * gwlib/cfg.[ch]: adding support for hooking config group definition files
+    as our own gwlib/cfg.def from external add-on modules to the core via
+    cfg_add_hooks(), taking two function arguments within the local scope of
+    the external module, representing the is_allowed_in_group() and 
+    is_single_group() from the core. In the local scope the external .def
+    file is included as we do in the core. The purpose of this cfg_add_hooks()
+    function is to allow add-on modules to use seamlessly the core's cfg.c
+    code for semantical config checks at startup.
+    
+2006-07-05  Stipe Tolj  <stolj at kannel.org>
+  * gwlib/http.c: fixing bug #326, which causes panic in check_pool_conn() 
+    when using HTTP/1.1 keep-alive connections, hence the dict_get() lookup
+    returned a NULL and we pass this list untested to gwlib_delete_equal()
+    which causes the panic. Thanks a lot to Vincent and Martin on solving.
+
+2006-06-13  Stipe Tolj  <stolj at kannel.org>
+  * gw/smsc/smsc_smpp.c: fixing bug report #334, actually this is a
+    feature to auto-detect if we have hex values for the message id
+    in submit_sm_resp vs. DLR messages via a if OR statement.
+    Thanks to Martin Conte <reflejo@gmail.com> for this patch.
+    [Msg-Id: <92cf04420606040932k3ae8b166of0d111f9e825f4ca@mail.gmail.com>]
+    
+2006-06-12  Stipe Tolj  <stolj at kannel.org>
+  * doc/userguide/userguide.xml: adding a paragraph descibing the new 
+    line wrap delimiter '\' (backslash).
+  * gwlib/cfg.c: adding support for a line wrapping delimiter '\' to
+    allow multiple lines for a single config directive.
+    Alex suggested this via a patch to the list.
+    [Msg-Id: <e5s5du$dbv$1@sea.gmane.org>]
+
+2006-06-11  Stipe Tolj  <stolj at kannel.org>
+  * wap/wtp_init.c: fixing bug #350, typo which may cause a segfault.
+    Thanks to <hewei.com@gmail.com> for bug report and patch.
+
+2006-06-06  Alexander Malysh <amalysh at kannel.org>
+  * configure, configure.in: fixed net/if.h detection on Mac OSX.
+
 2006-06-03  Alexander Malysh <amalysh at kannel.org>
   * gwlib/xmlrpc.c: various fixes:
     - write <string></string> tags for empty string
