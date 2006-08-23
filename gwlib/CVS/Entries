@@ -1,8 +1,6 @@
 /.cvsignore/1.1/Fri Nov 11 16:58:29 2005//
 /accesslog.c/1.9/Fri Nov 11 16:58:28 2005//
 /accesslog.h/1.7/Fri Nov 11 16:58:28 2005//
-/charset.c/1.21/Fri Nov 11 16:58:29 2005//
-/charset.h/1.13/Thu Mar 23 18:33:27 2006//
 /conn.c/1.83/Sun Mar  5 14:51:33 2006//
 /conn.h/1.32/Sun Mar  5 14:51:33 2006//
 /counter.c/1.14/Fri Nov 11 17:53:13 2005//
@@ -10,14 +8,12 @@
 /date.c/1.18/Fri Nov 11 16:58:29 2005//
 /date.h/1.8/Fri Nov 11 16:58:29 2005//
 /dbpool.c/1.17/Fri Nov 11 17:30:01 2005//
-/dbpool.h/1.12/Fri Nov 11 17:30:01 2005//
 /dbpool_mysql.c/1.6/Fri Nov 11 17:30:01 2005//
 /dbpool_oracle.c/1.7/Fri Nov 11 16:58:29 2005//
 /dbpool_p.h/1.6/Fri Nov 11 16:58:29 2005//
 /dbpool_pgsql.c/1.6/Fri Nov 11 17:30:01 2005//
 /dbpool_sdb.c/1.2/Fri Nov 11 16:58:29 2005//
 /dbpool_sqlite.c/1.4/Fri Nov 11 16:58:28 2005//
-/dbpool_sqlite3.c/1.1/Tue Sep 27 15:39:41 2005//
 /dict.c/1.16/Fri Nov 11 16:58:28 2005//
 /dict.h/1.7/Fri Nov 11 16:58:29 2005//
 /fdset.c/1.11/Fri Nov 11 17:30:01 2005//
@@ -79,5 +75,9 @@
 /cfg.c/1.32/Wed Jul  5 23:15:36 2006//
 /cfg.h/1.15/Wed Jul  5 23:15:36 2006//
 /http.c/1.243/Wed Jul  5 23:15:36 2006//
-/cfg.def/1.119/Fri Jul  7 14:04:39 2006//
+/cfg.def/1.120/Wed Jul 26 12:14:20 2006//
+/dbpool.h/1.13/Wed Jul 26 12:14:20 2006//
+/dbpool_sqlite3.c/1.2/Wed Jul 26 12:14:20 2006//
+/charset.c/1.21/Mon Aug 21 11:20:53 2006//
+/charset.h/1.13/Mon Aug 21 11:20:53 2006//
 D
