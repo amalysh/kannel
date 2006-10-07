@@ -273,6 +273,7 @@ SINGLE_GROUP(smsbox,
     OCTSTR(white-list-regex)
     OCTSTR(black-list-regex)
     OCTSTR(immediate-sendsms-reply)
+    OCTSTR(max-pending-requests)
 )
 
 
@@ -370,6 +371,9 @@ MULTI_GROUP(smsc,
     OCTSTR(preferred-prefix-regex)
     OCTSTR(max-error-count)
     OCTSTR(alt-addr-charset)
+    OCTSTR(status-success-regex)
+    OCTSTR(status-permfail-regex)
+    OCTSTR(status-tempfail-regex)
 )
 
 
@@ -386,6 +390,8 @@ MULTI_GROUP(sms-service,
     OCTSTR(exec)
     OCTSTR(accepted-smsc)
     OCTSTR(accepted-smsc-regex)
+    OCTSTR(accepted-account)
+    OCTSTR(accepted-account-regex)
     OCTSTR(forced-smsc)
     OCTSTR(default-smsc)
     OCTSTR(faked-sender)

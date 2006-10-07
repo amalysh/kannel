@@ -166,9 +166,12 @@ int urltrans_add_cfg(URLTranslationList *trans, Cfg *cfg);
  *
  * If 'smsc' is set, only accept translation with no 'accepted-smsc' set or
  * with matching smsc in that list.
+ *
+ * If 'account' is set, only accept translation with no 'accepted-account' set or
+ * with matching account in that list.
  */
 URLTranslation *urltrans_find(URLTranslationList *trans, Octstr *text, 
-    	    	    	      Octstr *smsc, Octstr *sender, Octstr *receiver);
+    	    	    	      Octstr *smsc, Octstr *sender, Octstr *receiver, Octstr *account);
 
 /*
  * Find the translation that corresponds to a given name
@@ -185,6 +188,16 @@ URLTranslation *urltrans_find_service(URLTranslationList *trans, Msg *msg);
  */
 URLTranslation *urltrans_find_username(URLTranslationList *trans, 
     	    	    	    	       Octstr *name);
+
+
+/* 
+ * Return the populated URL octstr from the given pattern containing
+ * the escape codes with values from the Msg.
+ * urtrans_get_pattern() uses this internally, but we want to provide
+ * this function also to the external calling space for use of the
+ * defined escape codes for Msg values.
+ */
+Octstr *urltrans_fill_escape_codes(Octstr *pattern, Msg *request);
 
 
 /*

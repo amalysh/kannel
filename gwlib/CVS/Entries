@@ -37,7 +37,6 @@
 /gwthread-pthread.c/1.50/Tue May 23 16:25:33 2006//
 /gwthread.h/1.21/Fri Nov 11 17:30:01 2005//
 /html-entities.def/1.4/Fri Nov 11 16:58:28 2005//
-/http.h/1.68/Sun Mar  5 14:36:07 2006//
 /list.c/1.42/Fri Nov 11 16:58:29 2005//
 /list.h/1.25/Fri Apr 28 15:48:18 2006//
 /log.c/1.50/Fri Nov 11 16:58:29 2005//
@@ -60,7 +59,6 @@
 /protected.h/1.13/Fri Nov 11 16:58:29 2005//
 /regex.c/1.10/Sat Apr  1 17:18:19 2006//
 /regex.h/1.8/Sat Apr  1 17:18:29 2006//
-/semaphore.c/1.9/Fri Nov 11 16:58:29 2005//
 /semaphore.h/1.5/Fri Nov 11 16:58:29 2005//
 /socket.c/1.60/Fri Nov 11 16:58:29 2005//
 /socket.h/1.26/Fri Nov 11 16:58:29 2005//
@@ -75,9 +73,12 @@
 /cfg.c/1.32/Wed Jul  5 23:15:36 2006//
 /cfg.h/1.15/Wed Jul  5 23:15:36 2006//
 /http.c/1.243/Wed Jul  5 23:15:36 2006//
-/cfg.def/1.120/Wed Jul 26 12:14:20 2006//
 /dbpool.h/1.13/Wed Jul 26 12:14:20 2006//
 /dbpool_sqlite3.c/1.2/Wed Jul 26 12:14:20 2006//
-/charset.c/1.21/Mon Aug 21 11:20:53 2006//
-/charset.h/1.13/Mon Aug 21 11:20:53 2006//
+/http.h/1.69/Fri Oct  6 14:29:14 2006//
+/semaphore.c/1.10/Fri Oct  6 14:29:14 2006//
+/cfg.def/1.123/Fri Oct  6 14:29:14 2006//
+/charset.c/1.22/Fri Oct  6 14:37:41 2006//
+/charset.h/1.14/Fri Oct  6 14:37:41 2006//
+/latin1_to_gsm.h/1.1/Fri Oct  6 14:37:41 2006//
 D

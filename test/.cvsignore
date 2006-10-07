@@ -47,4 +47,6 @@ test_regex
 test_uuid
 test_prioqueue
 test_hmac
+test_conn
+test_store_dump
 *.exe

@@ -91,6 +91,7 @@
 /* Defaults for the HTTP request queueing inside http_queue_thread */
 #define HTTP_MAX_RETRIES    0
 #define HTTP_RETRY_DELAY    10 /* in sec. */
+#define HTTP_MAX_PENDING    512 /* max requests handled in parallel */
 
 /* have we received restart cmd from bearerbox? */
 volatile sig_atomic_t restart = 0;
@@ -120,12 +121,15 @@ static Numhash *white_list;
 static Numhash *black_list;
 static regex_t *white_list_regex = NULL;
 static regex_t *black_list_regex = NULL;
-static unsigned long max_http_retries = HTTP_MAX_RETRIES;
-static unsigned long http_queue_delay = HTTP_RETRY_DELAY;
+static long max_http_retries = HTTP_MAX_RETRIES;
+static long http_queue_delay = HTTP_RETRY_DELAY;
 static Octstr *ppg_service_name = NULL;
 
 static List *smsbox_requests = NULL;      /* the inbound request queue */
 static List *smsbox_http_requests = NULL; /* the outbound HTTP request queue */
+
+/* Maximum requests that we handle in parallel */
+static Semaphore *max_pending_requests;
 
 int charset_processing (Octstr *charset, Octstr *text, int coding);
 static long get_tag(Octstr *body, Octstr *tag, Octstr **value, long pos, int nostrip);
@@ -257,7 +261,6 @@ static void read_messages_from_bearerbox(void)
 	    total++;
 	    gwlist_produce(smsbox_requests, msg);
 	} else if (msg_type(msg) == ack) {
-
 	    if (!immediate_sendsms_reply)
 		delayed_http_reply(msg);
 	    msg_destroy(msg);
@@ -685,6 +688,13 @@ static void get_x_kannel_from_xml(int requesttype , Octstr **type, Octstr **body
 	O_DESTROY(tmp);
     }
 
+    get_tag(*body, octstr_imm("oa"), &tmp, 0, 0);
+    if(tmp) {
+       /* sender address */
+        get_tag(tmp, octstr_imm("number"), from, 0, 0);
+        O_DESTROY(tmp);
+    }
+
     if(requesttype == mt_push) {
 	/* to (da/number) Multiple tags */ 
 	*tolist = gwlist_create();
@@ -849,7 +859,6 @@ static void get_x_kannel_from_xml(int requesttype , Octstr **type, Octstr **body
 	O_DESTROY(tmp);
     }
 
-    O_DESTROY(*body);
     if(text)
 	*body = text;
     else
@@ -1114,6 +1123,7 @@ static void url_result_thread(void *arg)
         queued = 0;
         id = http_receive_result(caller, &status, &final_url, &reply_headers,
 	    	    	    	 &reply_body);
+        semaphore_up(max_pending_requests);
         if (id == NULL)
             break;
 
@@ -1277,12 +1287,14 @@ static int obey_request(Octstr **result, URLTranslation *trans, Msg *msg)
 	break;
 
     case TRANSTYPE_EXECUTE:
+        semaphore_down(max_pending_requests);
         debug("sms.exec", 0, "executing sms-service '%s'",
               octstr_get_cstr(pattern));
         if ((f = popen(octstr_get_cstr(pattern), "r")) != NULL) {
             octstr_destroy(pattern);
             *result = octstr_read_pipe(f);
             pclose(f);
+            semaphore_up(max_pending_requests);
             alog("SMS request sender:%s request: '%s' file answer: '%s'",
                 octstr_get_cstr(msg->sms.receiver),
                 octstr_get_cstr(msg->sms.msgdata),
@@ -1310,6 +1322,7 @@ static int obey_request(Octstr **result, URLTranslation *trans, Msg *msg)
         }
 
 	id = remember_receiver(msg, trans, HTTP_METHOD_GET, pattern, request_headers, NULL, 0);
+        semaphore_down(max_pending_requests);
 	http_start_request(caller, HTTP_METHOD_GET, pattern, request_headers,
                        NULL, 1, id, NULL);
 	octstr_destroy(pattern);
@@ -1449,6 +1462,7 @@ static int obey_request(Octstr **result, URLTranslation *trans, Msg *msg)
 	    octstr_destroy(os);
 	}
 	id = remember_receiver(msg, trans, HTTP_METHOD_POST, pattern, request_headers, msg->sms.msgdata, 0);
+        semaphore_down(max_pending_requests);
 	http_start_request(caller, HTTP_METHOD_POST, pattern, request_headers,
  			           msg->sms.msgdata, 1, id, NULL);
 	octstr_destroy(pattern);
@@ -1615,6 +1629,7 @@ static int obey_request(Octstr **result, URLTranslation *trans, Msg *msg)
 
 	debug("sms", 0, "XMLBuild: XML: <%s>", octstr_get_cstr(msg->sms.msgdata));
 	id = remember_receiver(msg, trans, HTTP_METHOD_POST, pattern, request_headers, msg->sms.msgdata, 0);
+        semaphore_down(max_pending_requests);
 	http_start_request(caller, HTTP_METHOD_POST, pattern, request_headers,
 			           msg->sms.msgdata, 1, id, NULL);
 	octstr_destroy(pattern);
@@ -1656,47 +1671,19 @@ static void obey_request_thread(void *arg)
 	else
 	    dreport = 0;
 
-	/* Recode to iso-8859-1 the MO message if possible */
+	/* Recode to UTF-8 the MO message if possible */
 	if (mo_recode && msg->sms.coding == DC_UCS2) {
-        int converted = 0;
+            int converted = 0;
 	    Octstr *text;
 
 	    text = octstr_duplicate(msg->sms.msgdata);
-	    if(0 == octstr_recode (octstr_imm("iso-8859-1"), octstr_imm("UTF-16BE"), text)) {
-            if(octstr_search(text, octstr_imm("&#"), 0) == -1) {
-                /* XXX I'm trying to search for &#xxxx; text, which indicates that the
-                 * text couldn't be recoded.
-                 * We should use other function to do the recode or detect it using
-                 * other method */
-                info(0, "MO message converted from UCS-2 to ISO-8859-1");
-                octstr_destroy(msg->sms.msgdata);
-                msg->sms.msgdata = octstr_duplicate(text);
-                msg->sms.charset = octstr_create("ISO-8859-1");
-                msg->sms.coding = DC_7BIT;
-                converted=1;
-            } else {
-                octstr_destroy(text);
-	            text = octstr_duplicate(msg->sms.msgdata);
-            }
-	    }
-	    if(!converted && 0 == octstr_recode (octstr_imm("UTF-8"), octstr_imm("UTF-16BE"), text)) {
-            if(octstr_search(text, octstr_imm("&#"), 0) == -1) {
-                /* XXX I'm trying to search for &#xxxx; text, which indicates that the
-                 * text couldn't be recoded.
-                 * We should use other function to do the recode or detect it using
-                 * other method */
+	    if(0 == octstr_recode(octstr_imm("UTF-8"), octstr_imm("UTF-16BE"), text)) {
                 info(0, "MO message converted from UCS-2 to UTF-8");
                 octstr_destroy(msg->sms.msgdata);
                 msg->sms.msgdata = octstr_duplicate(text);
                 msg->sms.charset = octstr_create("UTF-8");
                 msg->sms.coding = DC_7BIT;
-            /* redundant, but this code could be used if another convertion is required
                 converted=1;
-            } else {
-                octstr_destroy(text);
-	            text = octstr_duplicate(msg->sms.msgdata);
-            */
-            }
 	    }
 	    octstr_destroy(text);
 	}
@@ -1743,7 +1730,7 @@ static void obey_request_thread(void *arg)
 
 	} else {
 	    trans = urltrans_find(translations, msg->sms.msgdata,
-	    	    	      msg->sms.smsc_id, msg->sms.sender, msg->sms.receiver);
+	    	    	      msg->sms.smsc_id, msg->sms.sender, msg->sms.receiver, msg->sms.account);
 	    if (trans == NULL) {
 		warning(0, "No translation found for <%s> from <%s> to <%s>",
 		    octstr_get_cstr(msg->sms.msgdata),
@@ -1803,6 +1790,8 @@ static void obey_request_thread(void *arg)
                 msg->sms.sender = NULL;
                 reply_msg->sms.receiver = msg->sms.receiver;
                 msg->sms.receiver = NULL;
+                reply_msg->sms.smsc_id = msg->sms.smsc_id;
+                msg->sms.smsc_id = NULL;
                 reply_msg->sms.msgdata = reply;
                 reply_msg->sms.time = time(NULL);	/* set current time */
 
@@ -3320,6 +3309,7 @@ static Cfg *init_smsbox(Cfg *cfg)
     Octstr *http_proxy_exceptions_regex = NULL;
     int ssl = 0;
     int lf, m;
+    long max_req;
 
     bb_port = BB_DEFAULT_SMSBOX_PORT;
     bb_ssl = 0;
@@ -3501,6 +3491,11 @@ static Cfg *init_smsbox(Cfg *cfg)
         }
     }
 
+    /* set maximum allowed MO/DLR requests in parallel */
+    if (cfg_get_integer(&max_req, grp, octstr_imm("max-pending-requests")) == -1)
+        max_req = HTTP_MAX_PENDING; 
+    max_pending_requests = semaphore_create(max_req);
+
     /*
      * Reading the name we are using for ppg services from ppg core group
      */
@@ -3643,6 +3638,7 @@ int main(int argc, char **argv)
     numhash_destroy(white_list);
     if (white_list_regex != NULL) gw_regex_destroy(white_list_regex);
     if (black_list_regex != NULL) gw_regex_destroy(black_list_regex);
+    semaphore_destroy(max_pending_requests);
     cfg_destroy(cfg);
 
     dict_destroy(client_dict); 
@@ -3677,14 +3673,14 @@ int charset_processing (Octstr *charset, Octstr *body, int coding) {
 	    /*
          * For 7 bit, convert to WINDOWS-1252
 	     */
-        if (charset_convert (body, octstr_get_cstr(charset), "WINDOWS-1252") < 0) {
+        if (charset_convert(body, octstr_get_cstr(charset), "UTF-8") < 0) {
 		resultcode = -1;
 	    }
 	} else if (coding == DC_UCS2) {
 	    /*
 	     * For UCS-2, convert to UTF-16BE
 	     */
-	    if (octstr_recode (octstr_imm ("UTF-16BE"), charset, body) < 0) {
+	    if (charset_convert(body, octstr_get_cstr(charset), "UTF-16BE") < 0) {
 		resultcode = -1;
 	    }
 	}
