@@ -43,7 +43,6 @@
 /log.h/1.23/Fri Nov 11 16:58:29 2005//
 /md5.c/1.7/Fri Nov 11 16:58:29 2005//
 /md5.h/1.6/Fri Nov 11 16:58:29 2005//
-/mime.c/1.14/Tue Mar 14 19:54:39 2006//
 /mime.h/1.10/Tue Mar 14 19:54:39 2006//
 /octstr.c/1.173/Sat Apr  1 17:07:36 2006//
 /octstr.c.debug/1.9/Fri Nov 11 16:58:29 2005//
@@ -58,7 +57,6 @@
 /protected.c/1.19/Fri Nov 11 16:58:29 2005//
 /protected.h/1.13/Fri Nov 11 16:58:29 2005//
 /regex.c/1.10/Sat Apr  1 17:18:19 2006//
-/regex.h/1.8/Sat Apr  1 17:18:29 2006//
 /semaphore.h/1.5/Fri Nov 11 16:58:29 2005//
 /socket.c/1.60/Fri Nov 11 16:58:29 2005//
 /socket.h/1.26/Fri Nov 11 16:58:29 2005//
@@ -77,8 +75,10 @@
 /dbpool_sqlite3.c/1.2/Wed Jul 26 12:14:20 2006//
 /http.h/1.69/Fri Oct  6 14:29:14 2006//
 /semaphore.c/1.10/Fri Oct  6 14:29:14 2006//
-/cfg.def/1.123/Fri Oct  6 14:29:14 2006//
 /charset.c/1.22/Fri Oct  6 14:37:41 2006//
 /charset.h/1.14/Fri Oct  6 14:37:41 2006//
 /latin1_to_gsm.h/1.1/Fri Oct  6 14:37:41 2006//
+/mime.c/1.16/Fri Oct 13 13:29:15 2006//
+/regex.h/1.9/Fri Oct 13 13:29:15 2006//
+/cfg.def/1.123/Sat Oct 14 12:04:03 2006//
 D
