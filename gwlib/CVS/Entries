@@ -1,7 +1,6 @@
 /.cvsignore/1.1/Fri Nov 11 16:58:29 2005//
 /accesslog.c/1.9/Fri Nov 11 16:58:28 2005//
 /accesslog.h/1.7/Fri Nov 11 16:58:28 2005//
-/conn.c/1.83/Sun Mar  5 14:51:33 2006//
 /conn.h/1.32/Sun Mar  5 14:51:33 2006//
 /counter.c/1.14/Fri Nov 11 17:53:13 2005//
 /counter.h/1.8/Fri Nov 11 16:58:29 2005//
@@ -70,7 +69,6 @@
 /xmlrpc.h/1.13/Fri Nov 11 16:58:29 2005//
 /cfg.c/1.32/Wed Jul  5 23:15:36 2006//
 /cfg.h/1.15/Wed Jul  5 23:15:36 2006//
-/http.c/1.243/Wed Jul  5 23:15:36 2006//
 /dbpool.h/1.13/Wed Jul 26 12:14:20 2006//
 /dbpool_sqlite3.c/1.2/Wed Jul 26 12:14:20 2006//
 /http.h/1.69/Fri Oct  6 14:29:14 2006//
@@ -81,4 +79,6 @@
 /mime.c/1.16/Fri Oct 13 13:29:15 2006//
 /regex.h/1.9/Fri Oct 13 13:29:15 2006//
 /cfg.def/1.123/Sat Oct 14 12:04:03 2006//
+/conn.c/1.84/Thu Oct 26 12:26:58 2006//
+/http.c/1.245/Thu Oct 26 12:26:58 2006//
 D
