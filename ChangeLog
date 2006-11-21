@@ -1,3 +1,71 @@
+2006-11-19  Stipe Tolj  <stolj at kannel.org>
+    * gw/ota_prov.c: fixing bug #356, where calltype parsing was not right.
+      Thanks a lot to Richad Kotal <info@waplikace.cz> for patch.
+      
+2006-11-19  Stipe Tolj  <stolj at kannel.org>
+    * configure[.in]: fixing bug #368 to support Oracle 10g, via 10.x instant 
+      client libs and headers. Thanks to Martin.
+    * gw/shared.c: added sqlite3 version output to version preamble, added
+      Oracle OCI version output.
+   
+2006-11-19  Stipe Tolj  <stolj at kannel.org>
+	* gw/bearerbox.c: resolves bug #369 by adding warning() calls for 
+	  --disable-sms or --disable-wap functions, so users are aware 
+	  that the function range is limited. Thanks to Martin for this patch. 
+	  Some more source code beauty via indention. NLC.
+	  
+2006-11-18  Stipe Tolj  <stolj at kannel.org>
+    * wap/wsp_headers.c: re-adding quote char (") recognizing within the 
+      wsp_field_value() that isolates header values. Thanks again to Paul.
+      [Msg-Id: <D594FE8B-729D-4183-BCFA-3337FE547D37@dsmagic.com>]
+      
+2006-11-18  Stipe Tolj  <stolj at kannel.org>
+    * gwlib/mime.c: fixing bug causing segfault due to destroyed, but then
+      reused Octstr pointer. Thanks to Paul for spotting this.
+      [Msg-Id: <E1F2DA11-C90B-49F5-9DC7-6481F44D14C7@dsmagic.com>]
+
+2006-11-18  Stipe Tolj  <stolj at kannel.org>
+    * configure[.in]: add /usr/lib64 search path within --with-ssl block, 
+      ie. FC5 on x64_64 has that lib64 layout for devel import libs.
+       
+2006-11-17  Stipe Tolj  <stolj at kannel.org>
+    * gw/smsbox.c: allow empty message responses.
+      Thanks to Colin Pitrat <colin.pitrat@bull.net> for this patch.
+      [Msg-Id: <44BCDE02.4090000@bull.net>]
+      
+2006-11-17  Stipe Tolj  <stolj at kannel.org>
+    * gw/wap_push_ppg.c: adding support to pass the 'from' source addr via
+      X-Kannel-From HTTP header in the PPG request.
+      Thanks to Christian Boustany <noorentertainment@yahoo.com> for this patch.
+      
+2006-11-17  Stipe Tolj  <stolj at kannel.org>
+    * doc/userguide/userguide.xml: section describing the new 'interactive' mode
+      for fakesmsc.
+    * test/fakesmsc.c: adding 'interactive' mode via stdin and stdout to allow
+      a more human like interaction with the fake smsc module.
+      Thanks to Alejandro Guerrieri <alejandro.guerrieri@gmail.com> for patch.
+      [Msg-Id: <cd6a81510610032000s2799a2c5uc2a255b15c53e899@mail.gmail.com>]
+
+2006-11-13  Stipe Tolj  <stolj at kannel.org>
+    * gw/smsc/smsc_smpp.c: relaxing the TON=1 must have >= 7 digits condition.
+      According to Andreas (see reference), there can be international routable
+      numbers with less then 7 digits. So we only drop a WARNING here and 
+      continue with processing. 
+      [Msg-Id: <0C09E1C0-D32C-41AA-AD14-4F8D849D92C4@fink.org>]
+      
+2006-11-11  Stipe Tolj  <stolj at kannel.org>
+    * gw/bb_alog.c: also add octstr_convert_printable() if custom access-log
+      formating is used.
+
+2006-11-10  Stipe Tolj  <stolj at kannel.org>
+    * gwlib/octstr.[ch]: adding function octstr_convert_printable() to allow
+      a simple convertion for an Ocstr to be printed in a printable locale
+      character set. Converts and non-printbale char to '.', as octstr_dump()
+      does.
+    * gw/bb_alog.c: ensure in bb_alog_sms() that we use octstr_convert_printable()
+      before calling alog() for DC_7BIT messages that still may contain control
+      sequences and hence break the "one-line-per-entry" rule.      
+
 2006-11-03 Alexander Malysh <amalysh at kannel.org>
     * gw/bb_boxc.c: fixed message of order issue when we retry to deliver
       to smsbox. Thanks to Ben Suffolk <ben at vanilla.net> for the patch.
