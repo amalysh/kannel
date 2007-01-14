@@ -1,7 +1,7 @@
 /* ====================================================================
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2005 Kannel Group  
+ * Copyright (c) 2001-2007 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -850,7 +850,7 @@ static int inline make_printable(int c)
 }
 
 
-void inline octstr_convert_printable(Octstr *ostr)
+void octstr_convert_printable(Octstr *ostr)
 {
     octstr_convert_range(ostr, 0, ostr->len, make_printable);
 }

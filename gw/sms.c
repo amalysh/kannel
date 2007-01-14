@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2005 Kannel Group  
+ * Copyright (c) 2001-2007 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -316,7 +316,7 @@ List *sms_split(Msg *orig, Octstr *header, Octstr *footer,
     if (orig->sms.coding == DC_8BIT || orig->sms.coding == DC_UCS2)
         max_part_len = max_octets - udh_len - hf_len;
     else
-        max_part_len = max_octets * 8 / 7 - (udh_len * 8 + 6) / 7 - hf_len;
+        max_part_len = max_octets * 8 / 7 - udh_len - hf_len;
 
     if (sms_msgdata_len(orig) > max_part_len && catenate) {
         /* Change part length to take concatenation overhead into account */
@@ -326,7 +326,7 @@ List *sms_split(Msg *orig, Octstr *header, Octstr *footer,
         if (orig->sms.coding == DC_8BIT || orig->sms.coding == DC_UCS2)
             max_part_len = max_octets - udh_len - hf_len;
         else
-            max_part_len = max_octets * 8 / 7 - (udh_len * 8 + 6) / 7 - hf_len;
+            max_part_len = max_octets * 8 / 7 - udh_len - hf_len;
     }
 
     /* ensure max_part_len is never negativ */

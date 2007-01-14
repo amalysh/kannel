@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2005 Kannel Group  
+ * Copyright (c) 2001-2007 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -59,11 +59,12 @@
  *
  * Uoti Urpala 2001
  * Alexander Malysh and Stipe Tolj 2002-2003
+ * Vincent Chavanis 2005-2006
  *
  * References:
  *
- *   [1] Short Message Sergice Centre 4.0 EMI - UCP Interface Specification
- *       document version 4.2, May 2001, CMG Wireless Data Solutions.
+ *   [1] Short Message Service Centre 4.6 EMI - UCP Interface Specification
+ *       document version 4.6, April 2003, CMG Wireless Data Solutions.
  */
 
 /* Doesn't warn about unrecognized configuration variables */
@@ -703,8 +704,8 @@ static int handle_operation(SMSCConn *conn, Connection *server,
                 break;
 
             /* 
-             * XSer 03-0b are for TDMA information exchange and are currently
-             * not implemented in this EMI interface. See CMG EMI/UCP spec 4.0,
+             * XSer 03-0b are for CDMA/TDMA information exchange and are currently
+             * not implemented in this EMI interface. See CMG EMI/UCP spec 4.6,
              * section 5.1.2.4 for more information.
              */
 
@@ -729,7 +730,7 @@ static int handle_operation(SMSCConn *conn, Connection *server,
                          octstr_get_cstr(privdata->name));
                 break;
 
-            /* XSer fields 0e-ff are reserved for future use. */
+            /* XSer fields 0e-ff are reserved for future use and should not be used. */
 
             default:
                 warning(0, "EMI2[%s]: Unsupported EMI XSer field %d",
@@ -861,13 +862,19 @@ static int handle_operation(SMSCConn *conn, Connection *server,
 	     * Recode the msg structure with the given msgdata.
 	     * Note: the DLR URL is delivered in msg->sms.dlr_url already.
 	     */
-	    if((emimsg->fields[E50_AMSG]) == NULL)
-		msg->sms.msgdata = octstr_create("Delivery Report without text");
-	    else
-		msg->sms.msgdata = octstr_duplicate(emimsg->fields[E50_AMSG]);
-	    octstr_hex_to_binary(msg->sms.msgdata);
-	    bb_smscconn_receive(conn, msg);
-	}
+        if ((emimsg->fields[E50_AMSG]) == NULL)
+            msg->sms.msgdata = octstr_create("Delivery Report without text");
+        else
+            msg->sms.msgdata = octstr_duplicate(emimsg->fields[E50_AMSG]);
+        octstr_hex_to_binary(msg->sms.msgdata);
+        if (octstr_get_char(emimsg->fields[E50_MT], 0) == '3') {
+            /* obey the NRC (national replacement codes) */
+            if (privdata->alt_charset == EMI_NRC_ISO_21)
+                charset_nrc_iso_21_german_to_gsm(msg->sms.msgdata);
+            charset_gsm_to_utf8(msg->sms.msgdata);
+        }
+        bb_smscconn_receive(conn, msg);
+    }
 	reply = emimsg_create_reply(53, emimsg->trn, 1, privdata->name);
 	if (emi2_emimsg_send(conn, server, reply) < 0) {
 	    emimsg_destroy(reply);

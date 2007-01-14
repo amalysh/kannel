@@ -1,7 +1,7 @@
-/radius_acct.c/1.15/Sun Dec 18 19:56:21 2005//
-/radius_acct.h/1.4/Sun Dec 18 19:54:06 2005//
-/radius_attributes.def/1.4/Sun Dec 18 19:54:06 2005//
-/radius_pdu.c/1.8/Sun Dec 18 19:54:06 2005//
-/radius_pdu.def/1.4/Sun Dec 18 19:54:06 2005//
-/radius_pdu.h/1.4/Sun Dec 18 19:54:06 2005//
+/radius_acct.c/1.16/Mon Jan  8 11:41:23 2007//
+/radius_acct.h/1.5/Mon Jan  8 11:41:23 2007//
+/radius_attributes.def/1.5/Mon Jan  8 11:41:23 2007//
+/radius_pdu.c/1.9/Mon Jan  8 11:41:23 2007//
+/radius_pdu.def/1.5/Mon Jan  8 11:41:23 2007//
+/radius_pdu.h/1.5/Mon Jan  8 11:41:23 2007//
 D

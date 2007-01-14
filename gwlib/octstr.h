@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2005 Kannel Group  
+ * Copyright (c) 2001-2007 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -309,7 +309,7 @@ void octstr_convert_range(Octstr *ostr, long pos, long len,
  * every char in the octstr can be printed in the current locale. Each
  * character that is NOT printable is converted to a '.' (dot).
  */
-void inline octstr_convert_printable(Octstr *ostr);
+void octstr_convert_printable(Octstr *ostr);
 
 
 /*

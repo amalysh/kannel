@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2005 Kannel Group  
+ * Copyright (c) 2001-2007 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -72,12 +72,13 @@
 #define	DLR_FAIL            0x02
 #define	DLR_BUFFERED        0x04
 #define	DLR_SMSC_SUCCESS    0x08
-#define	DLR_SMSC_FAIL       0x10
+#define	DLR_SMSC_FAIL       0x16
 
 #define DLR_IS_DEFINED(dlr)          (dlr != DLR_UNDEFINED)
 #define DLR_IS_ENABLED(dlr)          (DLR_IS_DEFINED(dlr) && (dlr & (DLR_SUCCESS | DLR_FAIL | DLR_BUFFERED | DLR_SMSC_SUCCESS | DLR_SMSC_FAIL)))
 #define DLR_IS_ENABLED_DEVICE(dlr)   (DLR_IS_DEFINED(dlr) && (dlr & (DLR_SUCCESS | DLR_FAIL | DLR_BUFFERED)))
 #define DLR_IS_ENABLED_SMSC(dlr)     (DLR_IS_DEFINED(dlr) && (dlr & (DLR_SMSC_SUCCESS | DLR_SMSC_FAIL)))
+#define DLR_IS_NOT_FINAL(dlr)        (DLR_IS_DEFINED(dlr) && (dlr & (DLR_BUFFERED | DLR_SMSC_SUCCESS | DLR_SMSC_FAIL)))
 #define DLR_IS_SUCCESS_OR_FAIL(dlr)  (DLR_IS_DEFINED(dlr) && (dlr & (DLR_SUCCESS | DLR_FAIL)))
 #define DLR_IS_SUCCESS(dlr)          (DLR_IS_DEFINED(dlr) && (dlr & DLR_SUCCESS))
 #define DLR_IS_FAIL(dlr)             (DLR_IS_DEFINED(dlr) && (dlr & DLR_FAIL))
