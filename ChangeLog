@@ -1,5 +1,35 @@
-2006-01-14 Alexander Malysh <amalysh at kannel.org>
-    * gw/bb_smscconn.c: set smsc_running = 0 in smsc2_cleanup insetad in
+2007-01-22 Alexander Malysh <amalysh at kannel.org>
+   *  doc/userguide/userguide.xml, gw/bb_store.c, gw/bb_store.h, gw/bb_store_file.c,
+      gw/bb_store_spool.c, gw/bearerbox.c, gw/bearerbox.h, gwlib/cfg.def,
+      test/test_store_dump.c: apllied patch that adds additinaly support for store
+      spool directory.
+      [Msg-ID: <op.thkqb6jxran2ed@ppc.local>]
+
+2007-01-22 Alexander Malysh <amalysh at kannel.org>
+   * gw/bb_boxc.c: implemented resend of MO/DLR messages if some box sent nack
+     with ack_failed_tmp status.
+
+2007-01-22 Alexander Malysh <amalysh at kannel.org>
+   * gwlib/gwmem-native.c: reverted last Stipe's commit. It doesn do anything usefull.
+
+2007-01-22  Stipe Tolj  <stolj at kannel.org>
+   * gwlib/gwmem-native.c: segfault prevention by setting all free()ed 
+     pointers to NULL. This follows the secure coding principles of CERT-CC.
+     A non NULLed pointer may be containing bogus after free() and a redo
+     of gw_free() and hence free() will lead to segfault eventually.
+     
+2007-01-22  Stipe Tolj  <stolj at kannel.org>
+   * gwlib/dbpool_sqlite.c: remove gw_free() in sqlite_close_conn(), since
+     sqlite's sqlite_close() will give a bogus pointer and we segfault.
+   * gwlib/dbpool_sqlite3.c: same as above, also fix a deadlock while closing
+     connection due to typo in while break condition.
+   * test/test_dbpool.c: add sqlite3 sections to the test
+   
+2007-01-22  Stipe Tolj  <stolj at kannel.org>
+    * test/test_charset.c: simple test checking GSM->UTF-8->GSM conversion.
+
+2007-01-14 Alexander Malysh <amalysh at kannel.org>
+    * gw/bb_smscconn.c: set smsc_running = 0 in smsc2_cleanup instead in
       router thread because so we never call smsc2_cleanup.
     * gwlib/cfg.c: fixed memleak. we should consider moving hooks to Cfg struct.
 

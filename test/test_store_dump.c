@@ -81,6 +81,7 @@ static int check_args(int i, int argc, char **argv) {
 int main(int argc, char **argv)
 {
     int cf_index;
+    Octstr *type;
     
     gwlib_init();
     
@@ -90,9 +91,11 @@ int main(int argc, char **argv)
         debug("",0,"Usage: %s <store-file>", argv[0]);
         goto error;
     }
+
+    type = octstr_create("file");
     
     /* init store subsystem */
-    store_init(octstr_imm(argv[cf_index]), -1);
+    store_init(type, octstr_imm(argv[cf_index]), -1);
 
     /* pass every entry in the store to callback print_msg() */
     store_load(print_msg);

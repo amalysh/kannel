@@ -1,4 +1,4 @@
-/* ==================================================================== 
+/* ====================================================================
  * The Kannel Software License, Version 1.0 
  * 
  * Copyright (c) 2001-2007 Kannel Group  
@@ -38,7 +38,7 @@
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
  * DISCLAIMED.  IN NO EVENT SHALL THE KANNEL GROUP OR ITS CONTRIBUTORS 
  * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,  
- * OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT  
+ * OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
  * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR  
  * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,  
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE  
@@ -52,90 +52,60 @@
  * 
  * Portions of this software are based upon software originally written at  
  * WapIT Ltd., Helsinki, Finland for the Kannel project.  
- */ 
-
+ */
+   
 /*
- * dbpool_sqlite3.c - implement SQLite3 operations for generic database connection pool
+ * bb_store.h : declarations for the bearerbox box SMS storage/retrieval module
  *
- * Stipe Tolj <st@tolj.org>
+ * Author: Alexander Malysh, 2005
  */
 
-#ifdef HAVE_SQLITE3
-#include <sqlite3.h>
+#ifndef BB_STORE_H_
+#define BB_STORE_H_
 
-static void *sqlite3_open_conn(const DBConf *db_conf)
-{
-    sqlite3 *db = NULL;
-    SQLite3Conf *conf = db_conf->sqlite3; /* make compiler happy */
-    char *errmsg = 0;
+#define BB_STORE_DEFAULT_DUMP_FREQ 10
 
-    /* sanity check */
-    if (conf == NULL)
-        return NULL;
+/* return number of SMS messages in current store (file) */
+extern long (*store_messages)(void);
 
-    if (sqlite3_open(octstr_get_cstr(conf->file), &db) != SQLITE_OK) {
-        error(0, "SQLite3: can not open or create database file `%s'!", 
-              octstr_get_cstr(conf->file));
-        error(0, "SQLite3: %s", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        goto failed;
-    }
+/* assign ID and save given message to store. Return -1 if save failed */
+extern int (*store_save)(Msg *msg);
 
-    info(0, "SQLite3: Opened or created database file `%s'.", octstr_get_cstr(conf->file));
-    info(0, "SQLite3: library version %s.", sqlite3_version);
+/*
+ * Store ack/nack to the store file for a given message with a given status.
+ * @return: -1 if save failed ; 0 otherwise.
+ */
+extern int (*store_save_ack)(Msg *msg, ack_status_t status);
 
-    return db;
+/* load store from file; delete any messages that have been relayed,
+ * and create a new store file from remaining. Calling this function
+ * might take a while, depending on store size
+ * Return -1 if something fails (bb can then PANIC normally)
+ */
+extern int (*store_load)(void(*receive_msg)(Msg*));
 
-failed:
-    return NULL;
-}
+/* dump currently non-acknowledged messages into file. This is done
+ * automatically now and then, but can be forced. Return -1 if file
+ * problems
+ */
+extern int (*store_dump)(void);
 
+/* initialize system. Return -1 if fname is baad (too long). */
+int store_init(const Octstr* type, const Octstr *fname, long dump_freq);
 
-static void sqlite3_close_conn(void *conn)
-{
-    int rc;
-    if (conn == NULL)
-        return;
+/* init shutdown (system dies when all acks have been processed) */
+extern void (*store_shutdown)(void);
 
-    /* in case we are busy, loop until we can close */
-    do {
-        rc = sqlite3_close((sqlite3*) conn);
-    } while (rc == SQLITE_BUSY);
-    
-    if (rc == SQLITE_ERROR) {
-        error(0, "SQLite3: error while closing database file.");
-    }
-}
+/* return all containing messages in the current store */
+extern Octstr* (*store_status)(int status_type);
 
 
-static int sqlite3_check_conn(void *conn)
-{
-    if (conn == NULL)
-        return -1;
-
-    /* There is no such construct in SQLite3,
-     * so return a valid connection indication */
-    return 0;
-}
+/**
+ * Init functions for different store types.
+ */
+int store_spool_init(const Octstr *fname);
+int store_file_init(const Octstr *fname, long dump_freq);
 
 
-static void sqlite3_conf_destroy(DBConf *db_conf)
-{
-    SQLite3Conf *conf = db_conf->sqlite3;
-
-    octstr_destroy(conf->file);
-
-    gw_free(conf);
-    gw_free(db_conf);
-}
-
-
-static struct db_ops sqlite3_ops = {
-    .open = sqlite3_open_conn,
-    .close = sqlite3_close_conn,
-    .check = sqlite3_check_conn,
-    .conf_destroy = sqlite3_conf_destroy
-};
-
-#endif /* HAVE_SQLITE3 */
+#endif /*BB_STORE_H_*/
 

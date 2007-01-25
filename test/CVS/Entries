@@ -1,4 +1,3 @@
-/.cvsignore/1.34/Fri Oct  6 14:29:14 2006//
 /blacklist.txt/1.1/Fri Nov 11 16:58:32 2005//
 /bookmark.txt/1.1/Fri Nov 11 16:58:32 2005//
 /chartest.html/1.1/Fri Nov 11 16:58:32 2005//
@@ -27,7 +26,6 @@
 /test_cfg.c/1.7/Mon Jan  8 11:41:24 2007//
 /test_cimd2.c/1.20/Mon Jan  8 11:41:24 2007//
 /test_conn.c/1.2/Mon Jan  8 11:41:24 2007//
-/test_dbpool.c/1.10/Mon Jan  8 11:41:24 2007//
 /test_dict.c/1.10/Mon Jan  8 11:41:24 2007//
 /test_headers.c/1.15/Mon Jan  8 11:41:24 2007//
 /test_hmac.c/1.4/Mon Jan  8 11:41:24 2007//
@@ -54,7 +52,6 @@
 /test_si.c/1.6/Mon Jan  8 11:41:24 2007//
 /test_sl.c/1.5/Mon Jan  8 11:41:24 2007//
 /test_smsc.c/1.18/Mon Jan  8 11:41:24 2007//
-/test_store_dump.c/1.2/Mon Jan  8 11:41:24 2007//
 /test_udp.c/1.9/Mon Jan  8 11:41:24 2007//
 /test_urltrans.c/1.12/Mon Jan  8 11:41:24 2007//
 /test_uuid.c/1.3/Mon Jan  8 11:41:24 2007//
@@ -65,4 +62,8 @@
 /wapproxy.c/1.10/Mon Jan  8 11:41:24 2007//
 /wml_tester.c/1.28/Mon Jan  8 11:41:24 2007//
 /decode_emimsg.c/1.1/Tue Jan  9 14:39:21 2007//
+/test_charset.c/1.1/Mon Jan 22 02:13:34 2007//
+/test_dbpool.c/1.11/Mon Jan 22 14:49:59 2007//
+/test_store_dump.c/1.3/Mon Jan 22 15:02:42 2007//
+/.cvsignore/1.36/Mon Jan 22 15:12:58 2007//
 D
