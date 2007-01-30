@@ -910,6 +910,7 @@ int octstr_case_compare(const Octstr *os1, const Octstr *os2)
         return 0;
     }
 
+    c1 = c2 = 0;
     for (i = 0; i < len; ++i) {
         c1 = toupper(os1->data[i]);
         c2 = toupper(os2->data[i]);
@@ -1576,7 +1577,7 @@ List *octstr_split(const Octstr *os, const Octstr *sep)
     pos = 0;
     seplen = octstr_len(sep);
 
-    while ((next = octstr_search(os, sep, pos)) > 0) {
+    while ((next = octstr_search(os, sep, pos)) >= 0) {
         gwlist_append(list, octstr_copy(os, pos, next - pos));
         pos = next + seplen;
     }

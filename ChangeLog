@@ -1,3 +1,29 @@
+2007-01-29 Andreas Fink <andreas at fink.org>
+  * gwlib/octstr.c: fixed octstr_split for cases where first occurence of separator is at position 0
+
+2007-01-26 Alexander Malysh <amalysh at kannel.org>
+   * gwlib/log.c: fixed deadlock from my last commit.
+
+2007-01-26 Alexander Malysh <amalysh at kannel.org>
+   * gwlib/cfg.c, gwlib/gwlib.c: fixed Stipe's last commit.
+
+2007-01-26  Stipe Tolj  <stolj at kannel.org>
+   * gwlib/cfg.[ch]: fix memleak and revert Alex's commit on destroying the 
+     hook lists in cfg_destroy(). We need to do this in a global module scope,
+     so we introduce cfg_[init|shudown]().
+   * gwlib/gwlib.c: call cfg_init() and cfg_shutdown() while gwlib usage.
+     Thanks to Florian Bruch for pointing to this inconsistancy.
+
+2007-01-26 Alexander Malysh <amalysh at kannel.org>
+   * gwlib/log.c: converted usage of List as rwlock to real RWLock and fixed
+     some deadlocks. Additionaly we now have clean memleak stack when compiled
+     with memcheck.
+
+2007-01-23  Stipe Tolj  <stolj at kannel.org>
+   * gw/smsc/smsc_smpp.c, gw/ota_compiler.c, gw/wap-appl.c, gwlib/octstr.c,
+     test/fakesmsc.c, test/test_[conn|list].c: fixing compiler warnings due to
+     unused or uninitialized variables. NLC.
+
 2007-01-22 Alexander Malysh <amalysh at kannel.org>
    *  doc/userguide/userguide.xml, gw/bb_store.c, gw/bb_store.h, gw/bb_store_file.c,
       gw/bb_store_spool.c, gw/bearerbox.c, gw/bearerbox.h, gwlib/cfg.def,
