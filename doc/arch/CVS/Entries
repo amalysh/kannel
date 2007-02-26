@@ -1,12 +1,12 @@
-/.cvsignore/1.5/Wed Jan 31 18:37:31 2007//
-/arch.xml/1.20/Wed Jan 31 18:37:31 2007//
-/bearerbox-arch.fig/1.1/Wed Jan 31 18:37:31 2007//
-/conf-push-session.fig/1.1/Wed Jan 31 18:37:31 2007//
-/external-interfaces.fig/1.2/Wed Jan 31 18:37:31 2007//
-/kannel-boxes.fig/1.1/Wed Jan 31 18:37:31 2007//
-/kannel-push-boxes.fig/1.1/Wed Jan 31 18:37:31 2007//
-/pushbox-threads.fig/1.1/Wed Jan 31 18:37:31 2007//
-/wap-arch.fig/1.1/Wed Jan 31 18:37:31 2007//
-/wap-session.fig/1.1/Wed Jan 31 18:37:31 2007//
-/wapbox-threads.fig/1.1/Wed Jan 31 18:37:31 2007//
+/.cvsignore/1.5/Sun Dec 18 19:54:04 2005//
+/arch.xml/1.20/Sun Dec 18 19:54:04 2005//
+/bearerbox-arch.fig/1.1/Sun Dec 18 19:54:04 2005//
+/conf-push-session.fig/1.1/Sun Dec 18 19:54:04 2005//
+/external-interfaces.fig/1.2/Sun Dec 18 19:54:04 2005//
+/kannel-boxes.fig/1.1/Sun Dec 18 19:54:04 2005//
+/kannel-push-boxes.fig/1.1/Sun Dec 18 19:54:04 2005//
+/pushbox-threads.fig/1.1/Sun Dec 18 19:54:04 2005//
+/wap-arch.fig/1.1/Sun Dec 18 19:54:04 2005//
+/wap-session.fig/1.1/Sun Dec 18 19:54:04 2005//
+/wapbox-threads.fig/1.1/Sun Dec 18 19:54:04 2005//
 D
