@@ -9,7 +9,6 @@
 /smpp_pdu_opt.def/1.6/Sun Jan 14 19:21:37 2007//
 /smsc.c/1.9/Sun Jan 14 19:21:36 2007//
 /smsc.h/1.5/Sun Jan 14 19:21:36 2007//
-/smsc_at.c/1.33/Sun Jan 14 19:21:37 2007//
 /smsc_at.h/1.12/Sun Jan 14 19:21:36 2007//
 /smsc_cgw.c/1.15/Sun Jan 14 19:21:36 2007//
 /smsc_cimd.c/1.5/Sun Jan 14 19:21:36 2007//
@@ -27,4 +26,5 @@
 /smsc_smpp.c/1.100/Tue Jan 30 23:54:37 2007//
 /smsc_soap.c/1.18/Sun Jan 14 19:21:37 2007//
 /smsc_wrapper.c/1.9/Sun Jan 14 19:21:36 2007//
+/smsc_at.c/1.34/Mon Feb 26 19:41:17 2007//
 D
