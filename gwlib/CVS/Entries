@@ -33,7 +33,6 @@
 /gw_uuid.h/1.5/Sun Dec 18 19:54:03 2005//
 /gw_uuid_types.h.in/1.1/Sun Dec 18 19:54:03 2005//
 /gwassert.h/1.15/Sun Jan 14 19:21:31 2007//
-/gwlib.c/1.23/Tue Jan 30 23:54:36 2007//
 /gwlib.h/1.53/Sun Jan 14 19:21:32 2007//
 /gwmem-check.c/1.32/Sun Jan 14 19:21:31 2007//
 /gwmem-native.c/1.12/Sun Jan 14 19:21:31 2007//
@@ -48,7 +47,6 @@
 /latin1_to_gsm.h/1.1/Sat Oct  7 15:18:04 2006//
 /list.c/1.45/Sun Jan 14 19:21:31 2007//
 /list.h/1.26/Sun Jan 14 19:21:31 2007//
-/log.c/1.53/Tue Jan 30 23:54:36 2007//
 /log.h/1.24/Sun Jan 14 19:21:32 2007//
 /md5.c/1.8/Sun Jan 14 19:21:31 2007//
 /md5.h/1.7/Sun Jan 14 19:21:31 2007//
@@ -81,4 +79,6 @@
 /octstr.c/1.180/Wed Apr 18 08:09:09 2007//
 /mime.c/1.20/Wed Apr 18 08:08:09 2007//
 /cfg.def/1.128/Wed Mar 21 22:22:14 2007//
+/gwlib.c/1.24/Wed May  9 09:11:24 2007//
+/log.c/1.53/Wed May  9 09:11:17 2007//
 D
