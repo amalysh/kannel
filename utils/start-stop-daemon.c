@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2007 Kannel Group  
+ * Copyright (c) 2001-2009 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -87,6 +87,7 @@
 #elif defined(__GNU__)
 #define OSHURD
 #elif defined(SunOS)
+#elif defined(__CYGWIN__)
 #elif defined(__FreeBSD__) || defined(__APPLE__)
 #define FreeBSD
 #else
@@ -916,11 +917,16 @@ main(int argc, char **argv)
 		close(fd);
 		chdir("/");
 		umask(022); /* set a default for dumb programs */
-#ifndef FreeBSD
-		setpgrp();  /* set the process group */
+#ifdef DARWIN
+                setpgrp();  /* set the process group */
 #else
-		setpgrp(0, runas_gid);  /* set the process group */
+#ifndef FreeBSD
+                setpgrp();  /* set the process group */
+#else
+ 		setpgrp(0, runas_gid);  /* set the process group */
 #endif
+#endif
+
 		fd=open("/dev/null", O_RDWR); /* stdin */
 		dup(fd); /* stdout */
 		dup(fd); /* stderr */

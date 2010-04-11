@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2007 Kannel Group  
+ * Copyright (c) 2001-2009 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -63,6 +63,8 @@
  *      2003 Made dbpool more generic.
  * Robert Ga³ach <robert.galach@my.tenbit.pl>
  *      2004 Added support for binding variables.
+ * Alejandro Guerrieri <aguerrieri at kannel dot org>
+ *      2009 Added support for MS-SQL using FreeTDS
  */
 
 #include "gwlib.h"
@@ -77,6 +79,7 @@
 #include "dbpool_sqlite3.c"
 #include "dbpool_sdb.c"
 #include "dbpool_pgsql.c"
+#include "dbpool_mssql.c"
 
 
 static void dbpool_conn_destroy(DBPoolConn *conn)
@@ -111,6 +114,11 @@ DBPool *dbpool_create(enum db_type db_type, DBConf *conf, unsigned int connectio
     p->db_type = db_type;
 
     switch(db_type) {
+#ifdef HAVE_MSSQL
+        case DBPOOL_MSSQL:
+            p->db_ops = &mssql_ops;
+            break;
+#endif
 #ifdef HAVE_MYSQL
         case DBPOOL_MYSQL:
             p->db_ops = &mysql_ops;
@@ -240,7 +248,7 @@ unsigned int dbpool_decrease(DBPool *p, unsigned int c)
 
 long dbpool_conn_count(DBPool *p)
 {
-    gw_assert(p->pool != NULL);
+    gw_assert(p != NULL && p->pool != NULL);
 
     return gwlist_len(p->pool);
 }
@@ -251,11 +259,19 @@ DBPoolConn *dbpool_conn_consume(DBPool *p)
     DBPoolConn *pc;
 
     gw_assert(p != NULL && p->pool != NULL);
+    
+    /* check for max connections and if 0 return NULL */
+    if (p->max_size < 1)
+        return NULL;
 
-    /* check if we have any connection, if no return NULL; otherwise we have deadlock */
-    if (p->curr_size < 1)
-        panic(0, "DBPOOL: Deadlock detected!!!");
-
+    /* check if we have any connection */
+    while (p->curr_size < 1) {
+        debug("dbpool", 0, "DBPool has no connections, reconnecting up to maximum...");
+        /* dbpool_increase ensure max_size is not exceeded so don't lock */
+        dbpool_increase(p, p->max_size - p->curr_size);
+        if (p->curr_size < 1)
+            gwthread_sleep(0.1);
+    }
 
     /* garantee that you deliver a valid connection to the caller */
     while ((pc = gwlist_consume(p->pool)) != NULL) {
@@ -277,7 +293,14 @@ DBPoolConn *dbpool_conn_consume(DBPool *p)
              * can be dangeros if all connections where broken, then we will
              * block here for ever.
              */
-            dbpool_increase(p, 1);
+            while (p->curr_size < 1) {
+                debug("dbpool", 0, "DBPool has too few connections, reconnecting up to maximum...");
+                /* dbpool_increase ensure max_size is not exceeded so don't lock */
+                dbpool_increase(p, p->max_size - p->curr_size);
+                if (p->curr_size < 1)
+                    gwthread_sleep(0.1);
+            }
+
         } else {
             break;
         }

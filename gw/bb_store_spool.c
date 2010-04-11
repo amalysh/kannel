@@ -1,7 +1,7 @@
 /* ====================================================================
  * The Kannel Software License, Version 1.0
  *
- * Copyright (c) 2001-2007 Kannel Group
+ * Copyright (c) 2001-2009 Kannel Group
  * Copyright (c) 1998-2001 WapIT Ltd.
  * All rights reserved.
  *
@@ -148,7 +148,7 @@ static void status_cb(const Octstr *filename, void *d)
     Msg *msg;
 
     msg_s = octstr_read_file(octstr_get_cstr(filename));
-    msg = msg_unpack(msg_s);
+    msg = store_msg_unpack(msg_s);
     octstr_destroy(msg_s);
     if (msg == NULL)
         return;
@@ -247,7 +247,7 @@ static void dispatch(const Octstr *filename, void *data)
     msg_s = octstr_read_file(octstr_get_cstr(filename));
     if (msg_s == NULL)
         return;
-    msg = msg_unpack(msg_s);
+    msg = store_msg_unpack(msg_s);
     octstr_destroy(msg_s);
     if (msg != NULL) {
         receive_msg(msg);
@@ -302,7 +302,7 @@ static int store_spool_save(Msg *msg)
     switch(msg_type(msg)) {
         case sms:
         {
-            Octstr *os = msg_pack(msg);
+            Octstr *os = store_msg_pack(msg);
             Octstr *filename, *dir;
             int fd;
             size_t wrc;

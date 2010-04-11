@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2007 Kannel Group  
+ * Copyright (c) 2001-2009 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -75,6 +75,8 @@
  *     instance. This is required if you use state conditioned smsboxes or smppboxes
  *     via one bearerbox. Previously bearerbox was simple ignoring to which smsbox
  *     connection a msg is passed. Now we can route the messages inside bearerbox.
+ * 2009-04-29: aguerrieri at kannel dot org:
+ *     added support for ms-sql and sybase via freetds.
  */
  
 #include <ctype.h>
@@ -256,6 +258,8 @@ void dlr_init(Cfg* cfg)
         handles = dlr_init_mem(cfg);
     } else if (octstr_compare(dlr_type, octstr_imm("pgsql")) == 0) {
         handles = dlr_init_pgsql(cfg);
+    } else if (octstr_compare(dlr_type, octstr_imm("mssql")) == 0) {
+        handles = dlr_init_mssql(cfg);
     }
 
     /*
@@ -311,9 +315,14 @@ const char* dlr_type(void)
 /*
  * Add new dlr entry into dlr storage
  */
-void dlr_add(const Octstr *smsc, const Octstr *ts, const Msg *msg)
+void dlr_add(const Octstr *smsc, const Octstr *ts, Msg *msg)
 {
     struct dlr_entry *dlr = NULL;
+
+    /* Add the foreign_id so all SMSC modules can use it */
+    if (msg->sms.foreign_id != NULL)
+        octstr_destroy(msg->sms.foreign_id);
+    msg->sms.foreign_id = octstr_duplicate(ts);
 
     if(octstr_len(smsc) == 0) {
 	warning(0, "DLR[%s]: Can't add a dlr without smsc-id", dlr_type());
@@ -374,8 +383,8 @@ Msg *dlr_find(const Octstr *smsc, const Octstr *ts, const Octstr *dst, int typ)
 
     dlr = handles->dlr_get(smsc, ts, dst);
     if (dlr == NULL)  {
-        warning(0, "DLR[%s]: DLR for DST<%s> not found.",
-                      dlr_type(), octstr_get_cstr(dst));
+        warning(0, "DLR[%s]: DLR from SMSC<%s> for DST<%s> not found.",
+                dlr_type(), octstr_get_cstr(smsc), octstr_get_cstr(dst));         
         return NULL;
     }
 
@@ -392,6 +401,8 @@ Msg *dlr_find(const Octstr *smsc, const Octstr *ts, const Octstr *dst, int typ)
         O_SET(msg->sms.sender, dlr->source);
         /* if dlr_url was present, recode it here again */
         O_SET(msg->sms.dlr_url, dlr->url);
+        /* add the foreign_id */
+        msg->sms.foreign_id = octstr_duplicate(ts);
         /* 
          * insert original message to the data segment 
          * later in the smsc module 
@@ -416,7 +427,7 @@ Msg *dlr_find(const Octstr *smsc, const Octstr *ts, const Octstr *dst, int typ)
  
     /* check for end status and if so remove from storage */
     if ((typ & DLR_BUFFERED) && ((dlr->mask & DLR_SUCCESS) || (dlr->mask & DLR_FAIL))) {
-        info(0, "DLR[%s]: DLR not destroyed, still waiting for other delivery report", dlr_type());
+        debug("dlr.dlr", 0, "DLR[%s]: DLR not destroyed, still waiting for other delivery report", dlr_type());
         /* update dlr entry status if function defined */
         if (handles != NULL && handles->dlr_update != NULL)
             handles->dlr_update(smsc, ts, dst, typ);
@@ -468,6 +479,7 @@ Msg* create_dlr_from_msg(const Octstr *smsc, const Msg *msg, const Octstr *reply
     dlrmsg->sms.dlr_url = octstr_duplicate(msg->sms.dlr_url);
     dlrmsg->sms.msgdata = octstr_duplicate(reply);
     dlrmsg->sms.boxc_id = octstr_duplicate(msg->sms.boxc_id);
+    dlrmsg->sms.foreign_id = octstr_duplicate(msg->sms.foreign_id);
     time(&dlrmsg->sms.time);
 
     debug("dlr.dlr", 0,"SMSC[%s]: DLR = %s",

@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2007 Kannel Group  
+ * Copyright (c) 2001-2009 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -172,7 +172,7 @@ void log_init(void)
     gw_rwlock_init_static(&rwlock);
 
     /* default all possible thread to logging index 0, stderr */
-    for (i = 0; i <= THREADTABLE_SIZE; i++) {
+    for (i = 0; i < THREADTABLE_SIZE; i++) {
         thread_to[i] = 0;
     }
 
@@ -279,10 +279,16 @@ void log_close_all(void)
 
     while (num_logfiles > 0) {
         --num_logfiles;
-        if (logfiles[num_logfiles].file != stderr &&
-            logfiles[num_logfiles].file != NULL)
+        if (logfiles[num_logfiles].file != stderr && logfiles[num_logfiles].file != NULL) {
+            int i;
+            /* look for the same filename and set file to NULL */
+            for (i = num_logfiles - 1; i >= 0; i--) {
+                if (strcmp(logfiles[num_logfiles].filename, logfiles[i].filename) == 0)
+                    logfiles[i].file = NULL;
+            }
             fclose(logfiles[num_logfiles].file);
-        logfiles[num_logfiles].file = NULL;
+            logfiles[num_logfiles].file = NULL;
+        }
     }
 
     /*

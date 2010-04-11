@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2007 Kannel Group  
+ * Copyright (c) 2001-2009 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -60,7 +60,11 @@
  * New driver for serial connected AT based
  * devices.
  * 4.9.2001
- * Andreas Fink <afink@smsrelay.com>
+ * Andreas Fink <andreas@fink.org>
+ 
+ * 23.6.2008, Andreas Fink,
+ *   added support for telnet connections
+ *   (for example Multi-Tech MTCBA-G-EN-F4)
  *
  */
 
@@ -95,6 +99,67 @@
 static Octstr 			*gsm2number(Octstr *pdu);
 static unsigned char	nibble2hex(unsigned char b);
 
+static void  at2_scan_for_telnet_escapes(PrivAT2data *privdata)
+{
+    int len;
+    int pos;
+    int start;
+    int a;
+    int b;
+    int i;
+    Octstr *hex;
+   
+    char answer[5];
+
+    
+    if(!privdata->ilb)
+        return;
+    start = 0;
+    len = octstr_len(privdata->ilb);
+    hex = octstr_duplicate(privdata->ilb);
+    octstr_binary_to_hex(hex,1);
+    
+    octstr_destroy(hex);
+
+    while(start < len)
+    {
+        pos = octstr_search_char(privdata->ilb, 0xFF, start);
+        if(pos < 0)
+            return;
+        if((len - pos )<3)
+            return;
+        a = octstr_get_char(privdata->ilb,pos+1);
+        b = octstr_get_char(privdata->ilb,pos+2);
+        switch(a)
+        {
+        case 0xFD:    /* do! */
+            answer[0] = 0xFF; /* escape */
+            answer[1] = 0xFC; /* wont do any option*/
+            answer[2] = b;
+            i = write(privdata->fd,&answer,3);
+            octstr_delete(privdata->ilb,pos,3);
+            len -=3;
+            break;
+           break;
+         case 0xFA:   /* do you support option b ? */
+            octstr_delete(privdata->ilb,pos,3);
+            len -=3;
+            break;
+            break;
+        case 0xFB:    /* will */
+            octstr_delete(privdata->ilb,pos,3);
+            len -=3;
+            break;
+        case 0xFC:    /* wont */
+            octstr_delete(privdata->ilb,pos,3);
+            len -=3;
+            break;
+        }
+        start = pos;
+    }
+    
+}
+
 static int at2_open_device1(PrivAT2data *privdata)
 {
     info(0, "AT2[%s]: opening device", octstr_get_cstr(privdata->name));
@@ -106,10 +171,18 @@ static int at2_open_device1(PrivAT2data *privdata)
     if (privdata->is_serial) {
         privdata->fd = open(octstr_get_cstr(privdata->device),
                             O_RDWR | O_NONBLOCK | O_NOCTTY);
+        privdata->use_telnet = 0;
     } else {
         if (octstr_str_compare(privdata->device, "rawtcp") == 0) {
+            privdata->use_telnet = 0;
             privdata->fd = tcpip_connect_to_server(octstr_get_cstr(privdata->rawtcp_host),
                                                    privdata->rawtcp_port, NULL); 
+        }
+        else if (octstr_str_compare(privdata->device, "telnet") == 0) {
+            privdata->use_telnet = 1;
+            privdata->fd = tcpip_connect_to_server(octstr_get_cstr(privdata->rawtcp_host),
+                                                   privdata->rawtcp_port, NULL); 
+
         } else {
             gw_assert(0);
         }
@@ -119,7 +192,31 @@ static int at2_open_device1(PrivAT2data *privdata)
         privdata->fd = -1;
         return -1;
     }
-    debug("bb.smsc.at2", 0, "AT2[%s]: device opened", octstr_get_cstr(privdata->name));
+    debug("bb.smsc.at2", 0, "AT2[%s]: device opened. Telnet mode = %d", octstr_get_cstr(privdata->name),privdata->use_telnet);
+
+    return 0;
+}
+
+
+static int at2_login_device(PrivAT2data *privdata)
+{
+    info(0, "AT2[%s]: Logging in", octstr_get_cstr(privdata->name));
+
+    at2_read_buffer(privdata, 0);
+    gwthread_sleep(0.5);
+    at2_read_buffer(privdata, 0);
+
+    if((octstr_len(privdata->username) == 0 ) && (octstr_len(privdata->password)> 0)) {
+        at2_wait_modem_command(privdata, 10, 3, NULL);	/* wait for Password: prompt */
+        at2_send_modem_command(privdata, octstr_get_cstr(privdata->password), 2,0); /* wait for OK: */
+        at2_send_modem_command(privdata, "AT", 2,0); /* wait for OK: */
+    }
+    else if((octstr_len(privdata->username) > 0 ) && (octstr_len(privdata->password)> 0)) {
+        at2_wait_modem_command(privdata, 10, 2, NULL);	/* wait for Login: prompt */
+        at2_send_modem_command(privdata, octstr_get_cstr(privdata->username), 10,3); /* wait fo Password: */
+        at2_send_modem_command(privdata, octstr_get_cstr(privdata->password), 2,0); /* wait for OK: */
+        at2_send_modem_command(privdata, "AT", 2,0); /* wait for OK: */
+    }
 
     return 0;
 }
@@ -180,8 +277,9 @@ static int at2_open_device(PrivAT2data *privdata)
 
 static void at2_close_device(PrivAT2data *privdata)
 {
-    info(0, "AT2[%s]: closing device", octstr_get_cstr(privdata->name));
-    close(privdata->fd);
+    info(0, "AT2[%s]: Closing device", octstr_get_cstr(privdata->name));
+	if (privdata->fd != -1)
+        close(privdata->fd);
     privdata->fd = -1;
     privdata->pin_ready = 0;
     privdata->phase2plus = 0;
@@ -191,11 +289,12 @@ static void at2_close_device(PrivAT2data *privdata)
 }
 
 
-static void at2_read_buffer(PrivAT2data *privdata)
+static void at2_read_buffer(PrivAT2data *privdata, double timeout)
 {
     char buf[MAX_READ + 1];
     int ret;
-    size_t count, s;
+    size_t count;
+    signed int s;
     fd_set read_fd;
     struct timeval tv;
 
@@ -211,8 +310,14 @@ static void at2_read_buffer(PrivAT2data *privdata)
         count = SSIZE_MAX;
 #endif
 
-    tv.tv_sec = 0;
-    tv.tv_usec = 1000;
+    if (timeout <= 0) {
+        tv.tv_sec = 0;
+        tv.tv_usec = 1000;
+    } else {
+      int usecs = timeout * 1000000;
+      tv.tv_sec = usecs / 1000000;
+      tv.tv_usec = usecs % 1000000;
+    }
 
     FD_ZERO(&read_fd);
     FD_SET(privdata->fd, &read_fd);
@@ -233,6 +338,8 @@ static void at2_read_buffer(PrivAT2data *privdata)
         at2_close_device(privdata);
     } else {
         octstr_append_data(privdata->ilb, buf, s);
+        if(privdata->use_telnet)
+            at2_scan_for_telnet_escapes(privdata);
     }
 }
 
@@ -243,16 +350,15 @@ static Octstr *at2_wait_line(PrivAT2data *privdata, time_t timeout, int gt_flag)
     time_t end_time;
     time_t cur_time;
 
-    time(&end_time);
     if (timeout == 0)
         timeout = 3;
-    end_time += timeout;
+    end_time = time(NULL) + timeout;
 
     if (privdata->lines != NULL)
         octstr_destroy(privdata->lines);
     privdata->lines = octstr_create("");
     while (time(&cur_time) <= end_time) {
-        line = at2_read_line(privdata, gt_flag);
+        line = at2_read_line(privdata, gt_flag, timeout);
         if (line)
             return line;
     }
@@ -260,7 +366,7 @@ static Octstr *at2_wait_line(PrivAT2data *privdata, time_t timeout, int gt_flag)
 }
 
 
-static Octstr *at2_read_line(PrivAT2data *privdata, int gt_flag)
+static Octstr *at2_extract_line(PrivAT2data *privdata, int gt_flag)
 {
     int	eol;
     int gtloc;
@@ -269,16 +375,33 @@ static Octstr *at2_read_line(PrivAT2data *privdata, int gt_flag)
     Octstr *buf2;
     int i;
 
-    at2_read_buffer(privdata);
-
     len = octstr_len(privdata->ilb);
     if (len == 0)
         return NULL;
 
-    if (gt_flag)
+    if (gt_flag==1) {
         /* looking for > if needed */
         gtloc = octstr_search_char(privdata->ilb, '>', 0); 
-    else
+    } else if((gt_flag == 2) && (privdata->username)) { /* looking for "Login" */
+        gtloc = -1;
+        if(privdata->login_prompt) {
+            gtloc = octstr_search(privdata->ilb,privdata->login_prompt,0);
+        }
+        if(gtloc == -1) {
+            gtloc = octstr_search(privdata->ilb,octstr_imm("Login:"),0);
+        }
+        if(gtloc == -1) {
+            gtloc = octstr_search(privdata->ilb,octstr_imm("Username:"),0);
+        }
+    } else if ((gt_flag == 3) && (privdata->password)) {/* looking for Password */
+    	gtloc = -1;
+        if(privdata->password_prompt) {
+            gtloc = octstr_search(privdata->ilb,privdata->password_prompt,0);
+        }
+        if(gtloc == -1) {
+            gtloc = octstr_search(privdata->ilb,octstr_imm("Password:"),0);
+        }
+    } else
         gtloc = -1;
 
     /*   
@@ -308,10 +431,8 @@ static Octstr *at2_read_line(PrivAT2data *privdata, int gt_flag)
     octstr_strip_blanks(line);
 
     /* empty line, skipping */
-    if ((strcmp(octstr_get_cstr(line), "") == 0) && ( gt_flag == 0)) 
-    {
-        octstr_destroy(line);
-        return NULL;
+    if (octstr_len(line) == 0 && (gt_flag == 0)) {
+        return line;
     }
     if ((gt_flag) && (gtloc != -1)) {
         /* got to re-add it again as the parser needs to see it */
@@ -319,6 +440,19 @@ static Octstr *at2_read_line(PrivAT2data *privdata, int gt_flag)
     }
     debug("bb.smsc.at2", 0, "AT2[%s]: <-- %s", octstr_get_cstr(privdata->name), 
           octstr_get_cstr(line));
+    return line;
+}
+
+
+static Octstr *at2_read_line(PrivAT2data *privdata, int gt_flag, double timeout)
+{
+    Octstr *line;
+
+    line = at2_extract_line(privdata, gt_flag);
+    if (!line) {
+         at2_read_buffer(privdata, timeout);
+         line = at2_extract_line(privdata, gt_flag);
+    }
     return line;
 }
 
@@ -339,7 +473,7 @@ static int at2_write_line(PrivAT2data *privdata, char *line)
         errno = 0;
         s = write(privdata->fd, octstr_get_cstr(linestr) + data_written, 
                   count - data_written);
-        if (s < 0 && errno == EAGAIN && write_count < RETRY_SEND) {
+        if (s < 0 && errno == EAGAIN && write_count < RETRY_WRITE) {
             gwthread_sleep(1);
             ++write_count;
         } else if (s > 0) {
@@ -372,7 +506,7 @@ static int at2_write_ctrlz(PrivAT2data *privdata)
     while (1) {
         errno = 0;
         s = write(privdata->fd, ctrlz, 1);
-        if (s < 0 && errno == EAGAIN && write_count < RETRY_SEND) {
+        if (s < 0 && errno == EAGAIN && write_count < RETRY_WRITE) {
             gwthread_sleep(1);
             ++write_count;
         } else
@@ -401,7 +535,7 @@ static int at2_write(PrivAT2data *privdata, char *line)
     count = strlen(line);
     while(count > data_written) {
         s = write(privdata->fd, line + data_written, count - data_written);
-        if (s < 0 && errno == EAGAIN && write_count < RETRY_SEND) {
+        if (s < 0 && errno == EAGAIN && write_count < RETRY_WRITE) {
             gwthread_sleep(1);
             ++write_count;
         } else if (s > 0) {
@@ -426,7 +560,7 @@ static int at2_write(PrivAT2data *privdata, char *line)
 
 static void at2_flush_buffer(PrivAT2data *privdata)
 {
-    at2_read_buffer(privdata);
+    at2_read_buffer(privdata, 0);
     octstr_destroy(privdata->ilb);
     privdata->ilb = octstr_create("");
 }
@@ -441,12 +575,13 @@ static int at2_init_device(PrivAT2data *privdata)
 
     at2_set_speed(privdata, privdata->speed);
     /* sleep 10 ms in order to get device some time to accept speed */
-    gwthread_sleep(0.10);
+    gwthread_sleep(0.1);
 
     /* reset the modem */
     if (at2_send_modem_command(privdata, "ATZ", 0, 0) == -1) {
         error(0, "AT2[%s]: Wrong or no answer to ATZ, ignoring",
               octstr_get_cstr(privdata->name));
+        return -1;
     }
 
     /* check if the modem responded */
@@ -610,13 +745,13 @@ static int at2_init_device(PrivAT2data *privdata)
 
 static int at2_send_modem_command(PrivAT2data *privdata, char *cmd, time_t timeout, int gt_flag)
 {
-    at2_write_line(privdata, cmd);
+    if (at2_write_line(privdata, cmd) == -1)
+        return -1;
     return at2_wait_modem_command(privdata, timeout, gt_flag, NULL);
 }
 
 
-static int at2_wait_modem_command(PrivAT2data *privdata, time_t timeout, int gt_flag, 
-                                  int *output)
+static int at2_wait_modem_command(PrivAT2data *privdata, time_t timeout, int gt_flag, int *output)
 {
     Octstr *line = NULL;
     Octstr *line2 = NULL;
@@ -629,10 +764,9 @@ static int at2_wait_modem_command(PrivAT2data *privdata, time_t timeout, int gt_
     int len;
     int cmgr_flag = 0;
 
-    time(&end_time);
-    if (timeout == 0)
-        timeout = 3;
-    end_time += timeout;
+    if (!timeout)
+    	timeout = 3;
+    end_time = time(NULL) + timeout;
 
     if (privdata->lines != NULL)
         octstr_destroy(privdata->lines);
@@ -641,7 +775,7 @@ static int at2_wait_modem_command(PrivAT2data *privdata, time_t timeout, int gt_
     smsc_number = octstr_create("");
     while (privdata->fd != -1 && time(&cur_time) <= end_time) {
         O_DESTROY(line);
-        if ((line = at2_read_line(privdata, gt_flag))) {
+        if ((line = at2_read_line(privdata, gt_flag, timeout))) {
             octstr_append(privdata->lines, line);
             octstr_append_cstr(privdata->lines, "\n");
 
@@ -663,14 +797,24 @@ static int at2_wait_modem_command(PrivAT2data *privdata, time_t timeout, int gt_
             }
             if (octstr_search(line, octstr_imm("+CPIN: READY"), 0) != -1) {
                 privdata->pin_ready = 1;
-                continue;
+                ret = 3;
+                goto end;
             }
             if (octstr_search(line, octstr_imm("+CMS ERROR"), 0) != -1) {
                 int errcode;
-                error(0, "AT2[%s]: CMS ERROR: %s", octstr_get_cstr(privdata->name), 
+                error(0, "AT2[%s]: +CMS ERROR: %s", octstr_get_cstr(privdata->name), 
                       octstr_get_cstr(line));
                 if (sscanf(octstr_get_cstr(line), "+CMS ERROR: %d", &errcode) == 1)
-                    error(0, "AT2[%s]: CMS ERROR: %s (%d)", octstr_get_cstr(privdata->name), 
+                    error(0, "AT2[%s]: +CMS ERROR: %s (%d)", octstr_get_cstr(privdata->name), 
+                          at2_error_string(errcode), errcode);
+                ret = 1;
+                goto end;
+            } else if (octstr_search(line, octstr_imm("+CME ERROR"), 0) != -1) {
+                int errcode;
+                error(0, "AT2[%s]: +CME ERROR: %s", octstr_get_cstr(privdata->name),
+                      octstr_get_cstr(line));
+                if (sscanf(octstr_get_cstr(line), "+CME ERROR: %d", &errcode) == 1)
+                    error(0, "AT2[%s]: +CME ERROR: %s (%d)", octstr_get_cstr(privdata->name),
                           at2_error_string(errcode), errcode);
                 ret = 1;
                 goto end;
@@ -709,6 +853,8 @@ static int at2_wait_modem_command(PrivAT2data *privdata, time_t timeout, int gt_
                             ++(*output);
                         msg = at2_pdu_decode(pdu, privdata);
                         if (msg != NULL) {
+                            octstr_destroy(msg->sms.smsc_id);
+                            octstr_destroy(msg->sms.smsc_number);
                             msg->sms.smsc_id = octstr_duplicate(privdata->conn->id);
                             msg->sms.smsc_number = octstr_duplicate(smsc_number);
                             bb_smscconn_receive(privdata->conn, msg);
@@ -718,8 +864,9 @@ static int at2_wait_modem_command(PrivAT2data *privdata, time_t timeout, int gt_
                         }
 
                         if (!cmgr_flag) {
-                            if (privdata->phase2plus)
-                                at2_write_line(privdata, "AT+CNMA");
+                            if (privdata->phase2plus) {
+                                at2_send_modem_command(privdata, "AT+CNMA", 3, 0);
+                            }
                         }
 
                         O_DESTROY(pdu);
@@ -800,9 +947,9 @@ static int at2_read_delete_message(PrivAT2data* privdata, int message_number)
 
     sprintf(cmd, "AT+CMGD=%d", message_number); /* delete the message we just read */
     /* 
-    * 3 seconds (default timeout of send_modem_command()) is not enough with some
-    * modems if the message is large, so we'll give it 7 seconds 
-    */
+     * 3 seconds (default timeout of send_modem_command()) is not enough with some
+     * modems if the message is large, so we'll give it 7 seconds
+     */
     if (at2_send_modem_command(privdata, cmd, 7, 0) != 0) {  
         /* 
          * failed to delete the message, we'll just ignore it for now, 
@@ -1078,8 +1225,37 @@ static void at2_set_speed(PrivAT2data *privdata, int bps)
             speed = B115200;
             break;
 #endif
+#ifdef B230400
+        case 230400:
+            speed = B230400;
+            break;
+#endif
+#ifdef B460800
+        case 460800:
+            speed = B460800;
+            break;
+#endif
+#ifdef B500000
+        case 500000:
+            speed = B500000;
+            break;
+#endif
+#ifdef B576000
+        case 576000:
+            speed = B576000;
+            break;
+#endif
+#ifdef B921600
+        case 921600:
+            speed = B921600;
+            break;
+#endif
         default:
-            speed = B9600;
+#if B9600 == 9600
+	     speed = bps;
+#else
+         speed = B9600;
+#endif
     }
     
     cfsetospeed(&tios, speed);
@@ -1099,7 +1275,7 @@ static void at2_device_thread(void *arg)
 {
     SMSCConn *conn = arg;
     PrivAT2data	*privdata = conn->data;
-    int l, reconnecting = 0, error_count = 0;
+    int reconnecting = 0, error_count = 0;
     long idle_timeout, memory_poll_timeout = 0;
 
     conn->status = SMSCCONN_CONNECTING;
@@ -1119,6 +1295,7 @@ reconnect:
             error(0, "AT2[%s]: Couldn't connect (retrying in %ld seconds).",
                      octstr_get_cstr(privdata->name), conn->reconnect_delay);
             gwthread_sleep(conn->reconnect_delay);
+            reconnecting = 0;
         }
 
         /* If modems->speed is defined, try to use it, else autodetect */
@@ -1153,6 +1330,13 @@ reconnect:
             continue;
         }
 
+        if (at2_login_device(privdata)) {
+            error(errno, "AT2[%s]: at2_device_thread: at2_login_device failed.", 
+                  octstr_get_cstr(privdata->name));
+            reconnecting = 1;
+            continue;
+        }
+
         if (privdata->max_error_count > 0 && error_count > privdata->max_error_count 
             && privdata->modem != NULL && privdata->modem->reset_string != NULL) {
             error_count = 0;
@@ -1168,7 +1352,8 @@ reconnect:
         }
 
         if (at2_init_device(privdata) != 0) {
-            error(0, "AT2[%s]: Initialization of device failed.", octstr_get_cstr(privdata->name));
+            error(0, "AT2[%s]: Initialization of device failed. Attempt #%d on %ld max.", octstr_get_cstr(privdata->name),
+                     error_count, privdata->max_error_count);
             at2_close_device(privdata);
             error_count++;
             reconnecting = 1;
@@ -1188,12 +1373,7 @@ reconnect:
 
     idle_timeout = 0;
     while (!privdata->shutdown) {
-        l = gw_prioqueue_len(privdata->outgoing_queue);
-        if (l > 0) {
-            at2_send_messages(privdata);
-            idle_timeout = time(NULL);
-        } else
-            at2_wait_modem_command(privdata, 1, 0, NULL);
+        at2_wait_modem_command(privdata, 1, 0, NULL);
 
         /* read error, so re-connect */
         if (privdata->fd == -1) {
@@ -1225,6 +1405,11 @@ reconnect:
             }
             memory_poll_timeout = time(NULL);
         }
+
+        if (gw_prioqueue_len(privdata->outgoing_queue) > 0) {
+            at2_send_messages(privdata);
+            idle_timeout = time(NULL);
+        }
     }
     at2_close_device(privdata);
     mutex_lock(conn->flow_mutex);
@@ -1241,6 +1426,9 @@ reconnect:
     octstr_destroy(privdata->sms_center);
     octstr_destroy(privdata->name);
     octstr_destroy(privdata->configfile);
+    octstr_destroy(privdata->username);
+    octstr_destroy(privdata->password);
+    octstr_destroy(privdata->rawtcp_host);
     gw_prioqueue_destroy(privdata->outgoing_queue, NULL);
     gwlist_destroy(privdata->pending_incoming_messages, octstr_destroy_item);
     gw_free(conn->data);
@@ -1330,6 +1518,7 @@ int smsc_at2_create(SMSCConn *conn, CfgGroup *cfg)
     long portno;   /* has to be long because of cfg_get_integer */
 
     privdata = gw_malloc(sizeof(PrivAT2data));
+    memset(privdata, 0, sizeof(PrivAT2data));
     privdata->outgoing_queue = gw_prioqueue_create(sms_priority_compare);
     privdata->pending_incoming_messages = gwlist_create();
 
@@ -1353,8 +1542,23 @@ int smsc_at2_create(SMSCConn *conn, CfgGroup *cfg)
         }
         privdata->rawtcp_port = portno;
         privdata->is_serial = 0;
+        privdata->use_telnet = 0;
+    } else if (octstr_str_compare(privdata->device, "telnet") == 0) {
+        privdata->rawtcp_host = cfg_get(cfg, octstr_imm("host"));
+        if (privdata->rawtcp_host == NULL) {
+            error(0, "AT2[-]: 'host' missing in at2 telnet configuration.");
+            goto error;
+        }
+        if (cfg_get_integer(&portno, cfg, octstr_imm("port")) == -1) {
+            error(0, "AT2[-]: 'port' missing in at2 telnet configuration.");
+            goto error;
+        }
+        privdata->rawtcp_port = portno;
+        privdata->is_serial = 0;
+        privdata->use_telnet = 1;
     } else {
         privdata->is_serial = 1;
+        privdata->use_telnet = 0;
     }
 
     privdata->name = cfg_get(cfg, octstr_imm("smsc-id"));
@@ -1376,8 +1580,12 @@ int smsc_at2_create(SMSCConn *conn, CfgGroup *cfg)
             privdata->sms_memory_poll_interval = AT2_DEFAULT_SMS_POLL_INTERVAL;
     }
 
-    privdata->my_number = cfg_get(cfg, octstr_imm("my-number"));
-    privdata->sms_center = cfg_get(cfg, octstr_imm("sms-center"));
+    privdata->my_number       = cfg_get(cfg, octstr_imm("my-number"));
+    privdata->sms_center      = cfg_get(cfg, octstr_imm("sms-center"));
+    privdata->username        = cfg_get(cfg, octstr_imm("smsc-username"));
+    privdata->password        = cfg_get(cfg, octstr_imm("smsc-password"));
+    privdata->login_prompt    = cfg_get(cfg, octstr_imm("login-prompt"));
+    privdata->password_prompt = cfg_get(cfg, octstr_imm("password-prompt"));
     modem_type_string = cfg_get(cfg, octstr_imm("modemtype"));
 
     privdata->modem = NULL;
@@ -1416,17 +1624,15 @@ int smsc_at2_create(SMSCConn *conn, CfgGroup *cfg)
     privdata->conn = conn;
     privdata->phase2plus = 0;
     privdata->validityperiod = cfg_get(cfg, octstr_imm("validityperiod"));
-    if (cfg_get_integer((long*) &privdata->max_error_count, cfg, octstr_imm("max-error-count")) == -1)
+    if (cfg_get_integer((long *) &privdata->max_error_count,  cfg, octstr_imm("max-error-count")) == -1)
         privdata->max_error_count = -1;
 
     conn->data = privdata;
     conn->name = octstr_format("AT2[%s]", octstr_get_cstr(privdata->name));
     conn->status = SMSCCONN_CONNECTING;
+    conn->connect_time = time(NULL);
 
     privdata->shutdown = 0;
-
-    conn->status = SMSCCONN_CONNECTING;
-    conn->connect_time = time(NULL);
 
     if ((privdata->device_thread = gwthread_create(at2_device_thread, conn)) == -1) {
         privdata->shutdown = 1;
@@ -1489,7 +1695,7 @@ static int at2_pdu_extract(PrivAT2data *privdata, Octstr **pdu, Octstr *line, Oc
 
     /* read the message length */
     pos = octstr_parse_long(&len, buffer, pos, 10);
-    if (pos == -1)
+    if (pos == -1 || len == 0)
         goto nomsg;
 
     /* skip the spaces and line return */
@@ -1554,7 +1760,9 @@ static Octstr *gsm2number(Octstr *pdu)
 
 	pos=0;
     len = octstr_len(pdu);
-	
+	if(len<= 0)
+		return octstr_create("");
+		
     ton = octstr_get_char(pdu,pos++);
     npi = ton & 0x0F;
     ton =  (ton >> 4) & 0x07;
@@ -1575,7 +1783,7 @@ static Octstr *gsm2number(Octstr *pdu)
 		tmp = octstr_create("");
 		break;
 	}
-	while(--len)
+	while(--len > 0)
 	{
 	    c = octstr_get_char(pdu,pos++);
 		a =  c & 0x0F;
@@ -1733,7 +1941,7 @@ static Msg *at2_pdu_decode_deliver_sm(Octstr *data, PrivAT2data *privdata)
     stime = date_convert_universal(&mtime);
 
     /* get data length
-     * XXX: Is it allowed to have length = 0 ??? (alex)
+     * TODO: Is it allowed to have length = 0 ??? (alex)
      */
     len = octstr_get_char(pdu, pos);
     pos++;
@@ -1763,8 +1971,8 @@ static Msg *at2_pdu_decode_deliver_sm(Octstr *data, PrivAT2data *privdata)
     /* build the message */
     message = msg_create(sms);
     if (!dcs_to_fields(&message, dcs)) {
-        /* XXX Should reject this message? */
-        debug("bb.smsc.at2", 0, "AT2[%s]: Invalid DCS", octstr_get_cstr(privdata->name));
+        /* TODO Should we reject this message? */
+        error(0, "AT2[%s]: Invalid DCS (0x%02x)", octstr_get_cstr(privdata->name), dcs);
         dcs_to_fields(&message, 0);
     }
 
@@ -1781,7 +1989,14 @@ static Msg *at2_pdu_decode_deliver_sm(Octstr *data, PrivAT2data *privdata)
             int nbits;
             nbits = (udhlen + 1) * 8;
             /* fill bits for UDH to septet boundary */
-            offset = (((nbits / 7) + 1) * 7 - nbits) % 7;     
+            offset = (((nbits / 7) + 1) * 7 - nbits) % 7;
+            /*
+             * Fix length because UDH data length is determined
+             * in septets if we are in GSM coding, otherwise it's in octets. Adding 6
+             * will ensure that for an octet length of 0, we get septet length 0,
+             * and for octet length 1 we get septet length 2. 
+             */
+            len = len + udhlen + 1 - (8 * (udhlen + 1) + 6) / 7;
         }
         at2_decode7bituncompressed(tmpstr, len, text, offset);
     }
@@ -1954,7 +2169,7 @@ static void at2_decode7bituncompressed(Octstr *input, int len, Octstr *decoded, 
     /* Shift the buffer offset bits to the left */
     if (offset > 0) {
         unsigned char *ip;
-        for (i = 0, ip = octstr_get_cstr(input); i < octstr_len(input); i++) {
+        for (i = 0, ip = (unsigned char *)octstr_get_cstr(input); i < octstr_len(input); i++) {
             if (i == octstr_len(input) - 1)
                 *ip = *ip >> offset;
             else
@@ -1991,23 +2206,19 @@ static void at2_send_messages(PrivAT2data *privdata)
 {
     Msg *msg;
 
-    do {
-        if (privdata->modem->enable_mms && 
-            gw_prioqueue_len(privdata->outgoing_queue) > 1)
-            at2_send_modem_command(privdata, "AT+CMMS=2", 0, 0);
+    if (privdata->modem->enable_mms && gw_prioqueue_len(privdata->outgoing_queue) > 1)
+        at2_send_modem_command(privdata, "AT+CMMS=2", 0, 0);
 
-        if ((msg = gw_prioqueue_remove(privdata->outgoing_queue)))
-            at2_send_one_message(privdata, msg);
-    } while (msg);
+    if ((msg = gw_prioqueue_remove(privdata->outgoing_queue)))
+        at2_send_one_message(privdata, msg);
 }
 
 
 static void at2_send_one_message(PrivAT2data *privdata, Msg *msg)
 {
-    unsigned char command[500];
+    char command[500];
     int ret = -1;
     char sc[3];
-    int retries = RETRY_SEND;
 
     if (octstr_len(privdata->my_number)) {
         octstr_destroy(msg->sms.sender);
@@ -2031,24 +2242,20 @@ static void at2_send_one_message(PrivAT2data *privdata, Msg *msg)
         if ((pdu = at2_pdu_encode(msg, privdata)) == NULL) {
             error(2, "AT2[%s]: Error encoding PDU!",octstr_get_cstr(privdata->name));
             return;
-        }	
+        }
 
-        ret = -99;
-        retries = RETRY_SEND;
-        while ((ret != 0) && (retries-- > 0)) {
-            int msg_id = -1;
-            /* 
-             * send the initial command and then wait for > 
-             */
-            sprintf(command, "AT+CMGS=%ld", octstr_len(pdu) / 2);
-            
-            ret = at2_send_modem_command(privdata, command, 5, 1);
-            debug("bb.smsc.at2", 0, "AT2[%s]: send command status: %d",
-                  octstr_get_cstr(privdata->name), ret);
+        int msg_id = -1;
+        /* 
+         * send the initial command and then wait for > 
+         */
+        sprintf(command, "AT+CMGS=%ld", octstr_len(pdu) / 2);
 
-            if (ret != 1) /* > only! */
-                continue;
-                
+        ret = at2_send_modem_command(privdata, command, 5, 1);
+        debug("bb.smsc.at2", 0, "AT2[%s]: send command status: %d",
+                octstr_get_cstr(privdata->name), ret);
+
+        if (ret == 1) {/* > only! */
+
             /* 
              * Ok the > has been see now so we can send the PDU now and a 
              * control Z but no CR or LF 
@@ -2060,21 +2267,21 @@ static void at2_send_one_message(PrivAT2data *privdata, Msg *msg)
              * All other types will get handled as used to be.
              */
 
-            if (octstr_compare(privdata->modem->id, octstr_imm("nokiaphone")) != 0) {           
-            
+            if (octstr_compare(privdata->modem->id, octstr_imm("nokiaphone")) != 0) { 
+
                 sprintf(command, "%s%s", sc, octstr_get_cstr(pdu));
                 at2_write(privdata, command);
                 at2_write_ctrlz(privdata);
-            
+
             } else {
-            
+
                 /* include the CTRL-Z in the PDU string */
                 sprintf(command, "%s%s%c", sc, octstr_get_cstr(pdu), 0x1A);
-       
+
                 /* chop PDU into 18-byte-at-a-time pieces to prevent choking 
                  * of certain GSM Phones (e.g. Nokia 6310, 6230 etc.) */
                 if (strlen(command) > 18) {
-                    unsigned char chop[20];
+                    char chop[20];
                     int len = strlen(command);
                     int pos = 0;
                     int ret = 18;
@@ -2092,42 +2299,34 @@ static void at2_send_one_message(PrivAT2data *privdata, Msg *msg)
                     at2_write(privdata, command);
                 }
             }               
-                
+
             /* wait 20 secs for modem command */
             ret = at2_wait_modem_command(privdata, 20, 0, &msg_id);
             debug("bb.smsc.at2", 0, "AT2[%s]: send command status: %d",
                   octstr_get_cstr(privdata->name), ret);
 
-            if (ret != 0) /* OK only */
-                continue;
+            if (ret != 0) {
+                bb_smscconn_send_failed(privdata->conn, msg,
+                        SMSCCONN_FAILED_TEMPORARILY, octstr_create("ERROR"));
+            }else{
+                /* store DLR message if needed for SMSC generated delivery reports */
+                if (DLR_IS_ENABLED_DEVICE(msg->sms.dlr_mask)) {
+                    if (msg_id == -1)
+                        error(0,"AT2[%s]: delivery notification requested, but I have no message ID!",
+                                octstr_get_cstr(privdata->name));
+                    else {
+                        Octstr *dlrmsgid = octstr_format("%d", msg_id);
 
-            /* store DLR message if needed for SMSC generated delivery reports */
-            if (DLR_IS_ENABLED_DEVICE(msg->sms.dlr_mask)) {
-                if (msg_id == -1)
-                    error(0,"AT2[%s]: delivery notification requested, but I have no message ID!",
-                          octstr_get_cstr(privdata->name));
-                else {
-                    Octstr *dlrmsgid = octstr_format("%d", msg_id);
+                        dlr_add(privdata->conn->id, dlrmsgid, msg);
 
-                    dlr_add(privdata->conn->id, dlrmsgid, msg);
+                        O_DESTROY(dlrmsgid);
 
-                    O_DESTROY(dlrmsgid);
+                    }
                 }
+
+                bb_smscconn_sent(privdata->conn, msg, NULL);
             }
-
-            bb_smscconn_sent(privdata->conn, msg, NULL);
         }
-
-        if (ret != 0) {
-            /*
-             * no need to do counter_increase(privdata->conn->failed) here,
-             * since bb_smscconn_send_failed() will inc the counter on
-             * SMSCCONN_FAILED_MALFORMED
-             */
-            bb_smscconn_send_failed(privdata->conn, msg,
-	        SMSCCONN_FAILED_MALFORMED, octstr_create("MALFORMED"));
-        }
-
         O_DESTROY(pdu);
     }
 }
@@ -2164,9 +2363,9 @@ static Octstr *at2_pdu_encode(Msg *msg, PrivAT2data *privdata)
     octstr_append(buffer, temp);
     O_DESTROY(temp);
 
-    octstr_append_char(buffer, (msg->sms.pid == -1 ? 0 : msg->sms.pid) ); /* protocol identifier */
+    octstr_append_char(buffer, (msg->sms.pid == SMS_PARAM_UNDEFINED ? 0 : msg->sms.pid) ); /* protocol identifier */
     octstr_append_char(buffer, fields_to_dcs(msg, /* data coding scheme */
-        (msg->sms.alt_dcs != -1 ? msg->sms.alt_dcs : privdata->conn->alt_dcs)));
+        (msg->sms.alt_dcs != SMS_PARAM_UNDEFINED ? msg->sms.alt_dcs : privdata->conn->alt_dcs)));
 
     /* 
      * Validity-Period (TP-VP)
@@ -2281,7 +2480,7 @@ static Octstr *at2_encode7bituncompressed(Octstr *source, int offset)
 {
     int LSBmask[8] = { 0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F };
     int MSBmask[8] = { 0x00, 0x40, 0x60, 0x70, 0x78, 0x7C, 0x7E, 0x7F };
-    int destRemain = (int)ceil ((octstr_len(source) * 7.0) / 8.0);
+    int destRemain = (int)ceil((octstr_len(source) * 7.0 + offset) / 8.0);
     int i = (offset?8-offset:7), iStore = offset;
     int posT, posS;
     Octstr *target = octstr_create("");
@@ -2353,11 +2552,11 @@ static int at2_detect_speed(PrivAT2data *privdata)
     debug("bb.smsc.at2", 0, "AT2[%s]: detecting modem speed. ", 
           octstr_get_cstr(privdata->name));
 
-    for (i = 0; i < (sizeof(autospeeds) / sizeof(int)); i++) {
-	if(at2_test_speed(privdata, autospeeds[i]) == 0) {
-	    privdata->speed = autospeeds[i];
-	    break;
-	}
+    for (i = 0; i < (sizeof(autospeeds) / sizeof(int)) && !privdata->shutdown; i++) {
+        if(at2_test_speed(privdata, autospeeds[i]) == 0) {
+            privdata->speed = autospeeds[i];
+            break;
+        }
     }
     if (privdata->speed == 0) {
         info(0, "AT2[%s]: cannot detect speed", octstr_get_cstr(privdata->name));
@@ -2375,6 +2574,7 @@ static int at2_test_speed(PrivAT2data *privdata, long speed)
     if (at2_open_device(privdata) == -1)
         return -1;
 
+    at2_read_buffer(privdata, 0); /* give telnet escape sequences a chance */
     at2_set_speed(privdata, speed);
     /* send a return so the modem can detect the speed */
     res = at2_send_modem_command(privdata, "", 1, 0); 
@@ -2403,19 +2603,50 @@ static int at2_detect_modem_type(PrivAT2data *privdata)
         return -1;
 
     at2_set_speed(privdata, privdata->speed);
+    /* sleep 10 ms in order to get device some time to accept speed */
+    gwthread_sleep(0.1);
+
+    /* reset the modem */
+    if (at2_send_modem_command(privdata, "ATZ", 0, 0) == -1) {
+        error(0, "AT2[%s]: Wrong or no answer to ATZ", octstr_get_cstr(privdata->name));
+        at2_close_device(privdata);
+        return -1;
+    }
+
+    /* check if the modem responded */
+    if (at2_send_modem_command(privdata, "AT", 0, 0) == -1) {
+        error(0, "AT2[%s]: Wrong or no answer to AT. Trying again", octstr_get_cstr(privdata->name));
+        if (at2_send_modem_command(privdata, "AT", 0, 0) == -1) {
+            error(0, "AT2[%s]: Second attempt to send AT failed", octstr_get_cstr(privdata->name));
+            at2_close_device(privdata);
+            return -1;
+        }
+    }
+
+    at2_flush_buffer(privdata);
+
     /* send a return so the modem can detect the speed */
     res = at2_send_modem_command(privdata, "", 1, 0); 
     res = at2_send_modem_command(privdata, "AT", 0, 0);
 
-    if (at2_send_modem_command(privdata, "AT&F", 0, 0) == -1)
+    if (at2_send_modem_command(privdata, "AT&F", 0, 0) == -1) {
+        at2_close_device(privdata);
         return -1;
-    if (at2_send_modem_command(privdata, "ATE0", 0, 0) == -1)
-        return -1;
+    }
 
     at2_flush_buffer(privdata);
 
-    if (at2_send_modem_command(privdata, "ATI", 0, 0) == -1)
+    if (at2_send_modem_command(privdata, "ATE0", 0, 0) == -1) {
+        at2_close_device(privdata);
         return -1;
+    }
+
+    at2_flush_buffer(privdata);
+
+    if (at2_send_modem_command(privdata, "ATI", 0, 0) == -1) {
+        at2_close_device(privdata);
+        return -1;
+    }
 
     /* we try to detect the modem automatically */
     i = 1;
@@ -2449,6 +2680,9 @@ static int at2_detect_modem_type(PrivAT2data *privdata)
                     break;
                 }
             }
+        } else {
+            /* Destroy modem */
+            at2_destroy_modem(modem);
         }
     }
 
@@ -2704,50 +2938,266 @@ static int at2_set_message_storage(PrivAT2data *privdata, Octstr *memory_name)
 }
 
 
-static const char *at2_error_string(int code)
+static const char *at2_error_string(int errcode)
 {
-    switch (code) {
+    /*
+     * +CMS ERRORS
+     * 0...127 from GSM 04.11 Annex E-2 values
+     * 128...255 from GSM 03.40 subclause 9.2.3.22
+     * 300...511 from GSM 07.05 subclause 3.2.5
+     * 512+ are manufacturer specific according to GSM 07.05 subclause 3.2.5
+     * 
+     * +CME ERRORS
+     * CME Error codes from GSM 07.07 section 9.2
+     * GPP TS 27.007 /2/
+     * GPRS-related errors - (GSM 04.08 cause codes)
+     * 
+     */
+    switch (errcode) {
+    case 0:
+        /*
+         * Default the code to 0 then when you extract the value from the
+         * modem response message and no code is found, 0 will result.
+         */
+        return "Modem returned ERROR but no error code - possibly unsupported or invalid command?";
+    case 1: 
+        /* 
+         * This cause indicates that the destination requested by the Mobile 
+         * Station cannot be reached because, although the number is in a 
+         * valid format, it is not currently assigned (allocated).
+         */
+        return "Unassigned (unallocated) number (+CMS) or No connection to phone (+CME)";
+    case 2:
+        return "Phone-adaptor link reserved";
+    case 3: 
+        /* 
+         * This can be a lot of things, depending upon the command, but in general
+         * it relates to trying to do a command when no connection exists.
+         */
+        return "Operation not allowed at this time (connection may be required)";
+    case 4: 
+        /* 
+         * This can be a lot of things, depending upon the command, but in general
+         * it relates to invaid parameters being passed.
+         */
+        return "Operation / Parameter(s) not supported";
+    case 5: 
+        return "PH-SIM PIN required";
     case 8:
+        /*
+         * This cause indicates that the MS has tried to send a mobile originating
+         * short message when the MS's network operator or service provider has
+         * forbidden such transactions.
+         */
         return "Operator determined barring";
     case 10:
-        return "Call barred";
+        /*
+         * This cause indicates that the outgoing call barred service applies to
+         * the short message service for the called destination.
+         */
+        return "Call barred (+CMS) or SIM not inserted or Card inserted is not a SIM (+CME)";
+    case 11:
+        return "SIM PIN required";
+    case 12:
+        return "SIM PUK required";
+    case 13:
+        return "SIM failure";
+    case 14:
+        return "SIM busy";
+    case 15:
+        return "SIM wrong";
+    case 16:
+        return "Incorrect password";
+    case 17:
+        /*
+         * This cause is sent to the MS if the MSC cannot service an MS generated
+         * request because of PLMN failures, e.g. problems in MAP.
+         */
+        return "Network failure (+CMS) or SIM PIN2 required (+CME)";
+    case 18:
+        return "SIM PUK2 required";
+    case 20:
+        return "Memory full";
     case 21:
-        return "Short message transfer rejected";
+        /*
+         * This cause indicates that the equipment sending this cause does not 
+         * wish to accept this short message, although it could have accepted 
+         * the short message since the equipment sending this cause is neither 
+         * busy nor incompatible.
+         */
+        return "Short message transfer rejected (+CMS) or Invalid Index (+CME)";
+    case 22:
+        /*
+         * This cause is sent if the service request cannot be actioned because 
+         * of congestion (e.g. no channel, facility busy/congested etc.). Or 
+         * this cause indicates that the mobile station cannot store the 
+         * incoming short message due to lack of storage capacity.
+         */
+        return "Congestion (+CMS) or Memory capacity exceeded (+CME)";
+    case 23:
+        return "Memory failure";
+    case 24:
+        return "Text string too long"; /* +CPBW, +CPIN, +CPIN2, +CLCK, +CPWD */
+    case 25:
+        return "Invalid characters in text string";
+    case 26:
+        return "Dial string too long"; /* +CPBW, ATD, +CCFC */
     case 27:
+        /*
+         * This cause indicates that the destination indicated by the Mobile 
+         * Station cannot be reached because the interface to the destination 
+         * is not functioning correctly. The term "not functioning correctly" 
+         * indicates that a signalling message was unable to be delivered to 
+         * the remote user; e.g., a physical layer or data link layer failure 
+         * at the remote user, user equipment off-line, etc.
+         * Also means "Invalid characters in dial string" for +CPBW.
+         */
         return "Destination out of service";
     case 28:
+        /*
+         * This cause indicates that the subscriber is not registered in the PLMN 
+         * (i.e. IMSI not known).
+         */
         return "Unidentified subscriber";
     case 29:
+        /*
+         * This cause indicates that the facility requested by the Mobile Station 
+         * is not supported by the PLMN.
+         */
         return "Facility rejected";
     case 30:
-        return "Unknown subscriber";
+        /*
+         * This cause indicates that the subscriber is not registered in the HLR 
+         * (i.e. IMSI or directory number is not allocated to a subscriber).
+         * Also means "No network service" for +VTS, +COPS=?, +CLCK, +CCFC, +CCWA, +CUSD
+         */
+        return "Unknown subscriber (+CMS) or No network service (+CME)";
+    case 31:
+        return "Network timeout";
+    case 32:
+        return "Network not allowed - emergency calls only"; /* +COPS */
     case 38:
+        /*
+         * This cause indicates that the network is not functioning correctly and 
+         * that the condition is likely to last a relatively long period of time; 
+         * e.g., immediately reattempting the short message transfer is not 
+         * likely to be successful.
+         */
         return "Network out of order";
+    case 40:
+        return "Network personal PIN required (Network lock)";
     case 41:
-        return "Temporary failure";
+        /*
+         * This cause indicates that the network is not functioning correctly and 
+         * that the condition is not likely to last a long period of time; e.g., 
+         * the Mobile Station may wish to try another short message transfer 
+         * attempt almost immediately.
+         */
+        return "Temporary failure (+CMS) or Network personalization PUK required (+CME)";
     case 42:
-        return "Congestion";
+        /*
+         * This cause indicates that the short message service cannot be serviced 
+         * because of high traffic.
+         */
+        return "Congestion (+CMS) or Network subset personalization PIN required (+CME)";
+    case 43:
+        return "Network subset personalization PUK required";
+    case 44:
+        return "Service provider personalization PIN required";
+    case 45:
+        return "Service provider personalization PUK required";
+    case 46:
+        return "Corporate personalization PIN required";
     case 47:
-        return "Resources unavailable, unspecified";
+        /*
+         * This cause is used to report a resource unavailable event only when no 
+         * other cause applies.
+         */
+        return "Resources unavailable, unspecified (+CMS) or Corporate personalization PUK required (+CME)";
     case 50:
+        /*
+         * This cause indicates that the requested short message service could not
+         * be provided by the network because the user has not completed the 
+         * necessary administrative arrangements with its supporting networks.
+         */
         return "Requested facility not subscribed";
     case 69:
+        /*
+         * This cause indicates that the network is unable to provide the 
+         * requested short message service.
+         */
         return "Requested facility not implemented";
     case 81:
+        /*
+         * This cause indicates that the equipment sending this cause has received
+         * a message with a short message reference which is not currently in use 
+         * on the MS-network interface.
+         */
         return "Invalid short message transfer reference value";
     case 95:
+        /*
+         * This cause is used to report an invalid message event only when no 
+         * other cause in the invalid message class applies.
+         */
         return "Invalid message, unspecified";
     case 96:
+        /*
+         * This cause indicates that the equipment sending this cause has received
+         * a message where a mandatory information element is missing and/or has 
+         * a content error (the two cases are indistinguishable).
+         */
         return "Invalid mandatory information";
     case 97:
+        /*
+         * This cause indicates that the equipment sending this cause has received
+         * a message with a message type it does not recognize either because this
+         * is a message not defined or defined but not implemented by the 
+         * equipment sending this cause.
+         */
         return "Message type non-existent or not implemented";
     case 98:
+        /*
+         * This cause indicates that the equipment sending this cause has received
+         * a message such that the procedures do not indicate that this is a 
+         * permissible message to receive while in the short message transfer 
+         * state.
+         */
         return "Message not compatible with short message protocol state";
     case 99:
+        /*
+         * This cause indicates that the equipment sending this cause has received
+         * a message which includes information elements not recognized because 
+         * the information element identifier is not defined or it is defined 
+         * but not implemented by the equipment sending the cause. However, the 
+         * information element is not required to be present in the message in 
+         * order for the equipment sending the cause to process the message.
+         */
         return "Information element non-existent or not implemented";
+    case 100:
+        return "Unknown";
+    case 103:
+        return "Illegal MS (#3)"; /* +CGATT */
+    case 106:
+        return "Illegal ME (#6)"; /* +CGATT */
+    case 107:
+        return "GPRS services not allowed (#7)"; /* +CGATT */
     case 111:
-        return "Protocol error, unspecified";
+        /*
+         * This cause is used to report a protocol error event only when no other 
+         * cause applies.
+         * Also means "PLMN not allowed (#11)" for +CGATT
+         */
+        return "Protocol error, unspecified (+CMS) or PLMN not allowed (#11) (+CME)";
+    case 112:
+        return "Location area not allowed (#12)"; /* +CGATT */
+    case 113:
+        return "Roaming not allowed in this area (#13)"; /* +CGATT */
     case 127:
+        /*
+         * This cause indicates that there has been interworking with a network 
+         * which does not provide causes for actions it takes; thus, the precise 
+         * cause for a message which is being send cannot be ascertained.
+         */
         return "Interworking, unspecified";
     case 128:
         return "Telematic interworking not supported";
@@ -2755,18 +3205,30 @@ static const char *at2_error_string(int code)
         return "Short message Type 0 not supported";
     case 130:
         return "Cannot replace short message";
+    case 132:
+        return "Service option not supported (#32)"; /* +CGACT +CGDATA ATD*99 */
+    case 133:
+        return "Requested service option not subscribed (#33)"; /* +CGACT +CGDATA ATD*99 */
+    case 134:
+        return "Service option temporarily out of order (#34)"; /* +CGACT +CGDATA ATD*99 */
     case 143:
         return "Unspecified TP-PID error";
     case 144:
-        return "Data coding scheme (alphabet not supported";
+        return "Data coding scheme (alphabet) not supported";
     case 145:
         return "Message class not supported";
+    case 148:
+        return "Unspecified GPRS error";
+    case 149:
+        return "PDP authentication failure"; /* +CGACT +CGDATA ATD*99 */
+    case 150:
+        return "Invalid mobile class";
     case 159:
         return "Unspecified TP-DCS error";
     case 160:
         return "Command cannot be actioned";
     case 161:
-        return "Command unsupported";
+        return "Unsupported command";
     case 175:
         return "Unspecified TP-Command error";
     case 176:
@@ -2788,13 +3250,13 @@ static const char *at2_error_string(int code)
     case 199:
         return "TP-VP not supported";
     case 208:
-        return "D0 SIM SMS storage full";
+        return "DO SIM SMS storage full";
     case 209:
         return "No SMS storage capability in SIM";
     case 210:
         return "Error in MS";
     case 211:
-        return "D0 SIM SMS storage full";
+        return "SIM Memory Capacity Exceeded";
     case 212:
         return "SIM Application Toolkit Busy";
     case 213:
@@ -2802,55 +3264,145 @@ static const char *at2_error_string(int code)
     case 255:
         return "Unspecified error cause";
     case 300:
-        return "ME failure";
+        /*
+         * Mobile equipment refers to the mobile device that communicates with
+         * the wireless network. Usually it is a mobile phone or GSM/GPRS modem.
+         * The SIM card is defined as a separate entity and is not part of mobile equipment.
+         */
+        return "Mobile equipment (ME) failure";
     case 301:
-        return "SMS service of ME reserved";
+        /*
+         * See +CMS error code 300 for the meaning of mobile equipment. 
+         */
+        return "SMS service of mobile equipment (ME) is reserved";
     case 302:
-        return "Operation not allowed";
+        return "The operation to be done by the AT command is not allowed";
     case 303:
-        return "Operation not supported";
+        return "The operation to be done by the AT command is not supported";
     case 304:
-        return "Invalid PDU mode parameter";
+        return "One or more parameter values assigned to the AT command are invalid";
     case 305:
-        return "Invalid text mode parameter";
+        return "One or more parameter values assigned to the AT command are invalid";
     case 310:
-        return "SIM not inserted";
+        return "There is no SIM card";
     case 311:
-        return "SIM PIN required";
+        /*
+         * The AT command +CPIN (command name in text: Enter PIN)
+         * can be used to send the PIN to the SIM card.
+         */
+        return "The SIM card requires a PIN to operate";
     case 312:
-        return "PH-SIM PIN required";
+        /*
+         * The AT command +CPIN (command name in text: Enter PIN)
+         * can be used to send the PH-SIM PIN to the SIM card.
+         */           
+        return "The SIM card requires a PH-SIM PIN to operate";
     case 313:
-        return "SIM failure";
+        return "SIM card failure";
     case 314:
-        return "SIM busy";
+        return "The SIM card is busy";
     case 315:
-        return "SIM wrong";
+        return "The SIM card is wrong";
     case 316:
-        return "SIM PUK required";
+        /*
+         * The AT command +CPIN (command name in text: Enter PIN)
+         * can be used to send the PUK to the SIM card.
+         */
+        return "The SIM card requires a PUK to operate";
     case 317:
-        return "SIM PIN2 required";
+        return "The SIM card requires a PIN2 to operate";
     case 318:
-        return "SIM PUK2 required";
+        return "The SIM card requires a PUK2 to operate";
     case 320:
-        return "Memory failure";
+        return "Memory/message storage failure";
     case 321:
-        return "Invalid memory index -> don't worry, just memory fragmentation.";
+        return "The memory/message storage index assigned to the AT command is invalid";
     case 322:
-        return "Memory full";
+        return "The memory/message storage is out of space";
     case 330:
-        return "SMSC address unknown";
+        return "The SMS center (SMSC) address is unknown";
     case 331:
-        return "No network service";
+        return "No network service is available";
     case 332:
-        return "Network timeout";
+        return "Network timeout occurred";
     case 340:
-        return "NO +CNMA ACK EXPECTED";
+        return "There is no need to send message ack by the AT command +CNMA";
     case 500:
-        return "Unknown error. -> maybe Sim storage is full? I'll have a look at it.";
+        return "An unknown error occurred";
     case 512:
-        return "User abort";
+        /*
+         * Resulting from +CMGS, +CMSS
+         */
+        return "User abort or MM establishment failure (SMS)";
+    case 513:
+        /*
+         * Resulting from +CMGS, +CMSS
+         */
+       return "Lower layer falure (SMS)";
+    case 514:
+        /*
+         * Resulting from +CMGS, +CMSS
+         */
+        return "CP error (SMS)";
+    case 515:
+        return "Please wait, service not available, init or command in progress";
+    case 517:
+        /*
+         * Resulting from +STGI
+         */
+        return "SIM ToolKit facility not supported";
+    case 518:
+        /*
+         * Resulting from +STGI
+         */
+        return "SIM ToolKit indication not received";
+    case 519:
+        /*
+         * Resulting from +ECHO, +VIP
+         */
+        return "Reset the product to activate or change a new echo cancellation algorithm";
+    case 520:
+        /*
+         * Resulting from +COPS=?
+         */
+        return "Automatic abort about get plmn list for an incoming call";
+    case 526:
+        /*
+         * Resulting from +CLCK
+         */
+        return "PIN deactivation forbidden with this SIM card";
+    case 527:
+        /*
+         * Resulting from +COPS
+         */
+        return "Please wait, RR or MM is busy. Retry your selection later";
+    case 528:
+        /*
+         * Resulting from +COPS
+         */
+        return "Location update failure. Emergency calls only";
+    case 529:
+        /*
+         * Resulting from +COPS
+         */
+        return "PLMN selection failure. Emergency calls only";
+    case 531:
+        /*
+         * Resulting from +CMGS, +CMSS
+         */
+        return "SMS not sent: the <da> is not in FDN phonebook, and FDN lock is enabled";
+    case 532:
+        /*
+         * Resulting from +WOPEN
+         */
+        return "The embedded application is activated so the objects flash are not erased";
+    case 533:
+        /*
+         * Resulting from +ATD*99,+GACT,+CGDATA
+         */
+        return "Missing or unknown APN";
     default:
-        return "Error number unknown. Ask google and add it.";
+        return "Error number unknown. Ask google and add it";
     }
 }
 

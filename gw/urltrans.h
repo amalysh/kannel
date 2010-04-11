@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2007 Kannel Group  
+ * Copyright (c) 2001-2009 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -170,8 +170,7 @@ int urltrans_add_cfg(URLTranslationList *trans, Cfg *cfg);
  * If 'account' is set, only accept translation with no 'accepted-account' set or
  * with matching account in that list.
  */
-URLTranslation *urltrans_find(URLTranslationList *trans, Octstr *text, 
-    	    	    	      Octstr *smsc, Octstr *sender, Octstr *receiver, Octstr *account);
+URLTranslation *urltrans_find(URLTranslationList *trans, Msg *msg);
 
 /*
  * Find the translation that corresponds to a given name

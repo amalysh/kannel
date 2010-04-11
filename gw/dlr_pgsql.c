@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2007 Kannel Group  
+ * Copyright (c) 2001-2009 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -141,7 +141,7 @@ static void dlr_pgsql_add(struct dlr_entry *entry)
 {
     Octstr *sql;
 
-    sql = octstr_format("INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES "
+    sql = octstr_format("INSERT INTO \"%s\" (\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\") VALUES "
                         "('%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d');",
                         octstr_get_cstr(fields->table), octstr_get_cstr(fields->field_smsc),
                         octstr_get_cstr(fields->field_ts),
@@ -154,7 +154,8 @@ static void dlr_pgsql_add(struct dlr_entry *entry)
                         entry->mask, octstr_get_cstr(entry->boxc_id), 0);
 
 
-    pgsql_update(sql);
+    if (!pgsql_update(sql))
+       warning(0, "DLR: PGSQL: No dlr inserted for DST<%s>", octstr_get_cstr(entry->destination));
     
     octstr_destroy(sql);
     dlr_entry_destroy(entry);
@@ -167,7 +168,7 @@ static struct dlr_entry *dlr_pgsql_get(const Octstr *smsc, const Octstr *ts, con
     Octstr *sql;
     List *result, *row;
 
-    sql = octstr_format("SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s='%s' AND %s='%s' LIMIT 1;",
+    sql = octstr_format("SELECT \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\" FROM \"%s\" WHERE \"%s\"='%s' AND \"%s\"='%s' LIMIT 1;",
                         octstr_get_cstr(fields->field_mask), octstr_get_cstr(fields->field_serv),
                         octstr_get_cstr(fields->field_url), octstr_get_cstr(fields->field_src),
                         octstr_get_cstr(fields->field_dst), octstr_get_cstr(fields->field_boxc),
@@ -220,13 +221,14 @@ static void dlr_pgsql_remove(const Octstr *smsc, const Octstr *ts, const Octstr 
     Octstr *sql;
 
     debug("dlr.pgsql", 0, "removing DLR from database");
-    sql = octstr_format("DELETE FROM %s WHERE oid = (SELECT oid FROM %s WHERE %s='%s' AND %s='%s' LIMIT 1);",
+    sql = octstr_format("DELETE FROM \"%s\" WHERE oid = (SELECT oid FROM \"%s\" WHERE \"%s\"='%s' AND \"%s\"='%s' LIMIT 1);",
                         octstr_get_cstr(fields->table), octstr_get_cstr(fields->table),
                         octstr_get_cstr(fields->field_smsc),
                         octstr_get_cstr(smsc), octstr_get_cstr(fields->field_ts), octstr_get_cstr(ts));
 
 
-    pgsql_update(sql);
+    if (!pgsql_update(sql))
+       warning(0, "DLR: PGSQL: No dlr deleted for DST<%s>", octstr_get_cstr(dst));
     octstr_destroy(sql);
 }
 
@@ -236,13 +238,14 @@ static void dlr_pgsql_update(const Octstr *smsc, const Octstr *ts, const Octstr 
     Octstr *sql;
 
     debug("dlr.pgsql", 0, "updating DLR status in database");
-    sql = octstr_format("UPDATE %s SET %s=%d WHERE oid = (SELECT oid FROM %s WHERE %s='%s' AND %s='%s' LIMIT 1);",
+    sql = octstr_format("UPDATE \"%s\" SET \"%s\"=%d WHERE oid = (SELECT oid FROM \"%s\" WHERE \"%s\"='%s' AND \"%s\"='%s' LIMIT 1);",
                         octstr_get_cstr(fields->table),
                         octstr_get_cstr(fields->field_status), status,
                         octstr_get_cstr(fields->table),
                         octstr_get_cstr(fields->field_smsc), octstr_get_cstr(smsc),
                         octstr_get_cstr(fields->field_ts), octstr_get_cstr(ts));
-    pgsql_update(sql);
+    if (!pgsql_update(sql))
+       warning(0, "DLR: PGSQL: No dlr updated for DST<%s> (status: %d)", octstr_get_cstr(dst), status);
     octstr_destroy(sql);
 }
 
@@ -253,7 +256,7 @@ static long dlr_pgsql_messages(void)
     long ret;
     List *res;
 
-    sql = octstr_format("SELECT count(*) FROM %s;", octstr_get_cstr(fields->table));
+    sql = octstr_format("SELECT count(*) FROM \"%s\";", octstr_get_cstr(fields->table));
 
     res = pgsql_select(sql);
     octstr_destroy(sql);
@@ -276,7 +279,7 @@ static void dlr_pgsql_flush(void)
 {
     Octstr *sql;
 
-    sql = octstr_format("DELETE FROM %s;", octstr_get_cstr(fields->table));
+    sql = octstr_format("DELETE FROM \"%s\";", octstr_get_cstr(fields->table));
 
     pgsql_update(sql);
     octstr_destroy(sql);
@@ -317,6 +320,20 @@ struct dlr_storage *dlr_init_pgsql(Cfg *cfg)
 
     fields = dlr_db_fields_create(grp);
     gw_assert(fields != NULL);
+
+    /*
+     * Escaping special quotes for field/table names
+     */
+    octstr_replace(fields->table, octstr_imm("\""), octstr_imm("\"\""));
+    octstr_replace(fields->field_smsc, octstr_imm("\""), octstr_imm("\"\""));
+    octstr_replace(fields->field_ts, octstr_imm("\""), octstr_imm("\"\""));
+    octstr_replace(fields->field_src, octstr_imm("\""), octstr_imm("\"\""));
+    octstr_replace(fields->field_dst, octstr_imm("\""), octstr_imm("\"\""));
+    octstr_replace(fields->field_serv, octstr_imm("\""), octstr_imm("\"\""));
+    octstr_replace(fields->field_url, octstr_imm("\""), octstr_imm("\"\""));      
+    octstr_replace(fields->field_mask, octstr_imm("\""), octstr_imm("\"\""));
+    octstr_replace(fields->field_status, octstr_imm("\""), octstr_imm("\"\"")); 
+    octstr_replace(fields->field_boxc, octstr_imm("\""), octstr_imm("\"\""));
 
     /*
      * now grap the required information from the 'pgsql-connection' group

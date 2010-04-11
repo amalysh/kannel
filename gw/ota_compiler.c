@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2007 Kannel Group  
+ * Copyright (c) 2001-2009 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -136,25 +136,25 @@ static ota_2table_t ota_elements[] = {
  */
 
 static ota_2table_t ota_syncsettings_elements[] = {
-    { "Version", 0x58 },
-    { "HostAddr", 0x50 },
-    { "Port", 0x52 },
-    { "RemoteDB", 0x54 },
-    { "CTType", 0x4E },
-    { "CTVer", 0x4F },
-    { "URI", 0x56 },
-    { "Name", 0x51 },
+    { "Addr", 0x45 },
+    { "AddrType", 0x46 },
     { "Auth", 0x47 },
     { "AuthLevel", 0x48 },
     { "AuthScheme", 0x49 },
-    { "Username", 0x57 },
-    { "Cred", 0x4D },
-    { "ConRef", 0x4B },
-    { "ConType", 0x4E },
     { "Bearer", 0x4A },
-    { "AddrType", 0x46 },
-    { "Addr", 0x45 },
-    { "RefID", 0x53 }
+    { "ConRef", 0x4B },
+    { "ConType", 0x4C },
+    { "Cred", 0x4D },
+    { "CTType", 0x4E },
+    { "CTVer", 0x4F },
+    { "HostAddr", 0x50 },
+    { "Name", 0x51 },
+    { "Port", 0x52 },
+    { "RefID", 0x53 },
+    { "RemoteDB", 0x54 },
+    { "URI", 0x56 },
+    { "Username", 0x57 },
+    { "Version", 0x58 }
 };
 
 #define NUMBER_OF_SYNCSETTINGS_ELEMENTS sizeof(ota_syncsettings_elements)/sizeof(ota_syncsettings_elements[0])
@@ -235,7 +235,7 @@ static ota_3table_t ota_attributes[] = {
 
 static ota_3table_t oma_ota_attributes[] = {
     { "VERSION", "1.0", 0x46 },
-    { "VERSION", "INLINE", 0x45 },  
+    { "VERSION", "INLINE", 0x45 },
     { "TYPE", "PXLOGICAL", 0x51 },
     { "TYPE", "PXPHYSICAL", 0x52 },
     { "TYPE", "PORT", 0x53 },
@@ -444,7 +444,7 @@ static ota_3table_t oma_ota_attributes[] = {
     { "VALUE", "DIGEST", 0x93, 1 },
     { "VALUE", "AAA", 0xE0 },
     { "VALUE", "HA", 0xE1 },
-    { "VALUE", "INLINE", 0x6 },     
+    { "VALUE", "INLINE", 0x6 },
 };
 
 #define OMA_VALUE_TAG 0x06
@@ -520,7 +520,7 @@ static int parse_document(xmlDocPtr document, Octstr *charset,
     xmlNodePtr node;
 
     if (document->intSubset && document->intSubset->ExternalID 
-        && strcmp(document->intSubset->ExternalID, "-//WAPFORUM//DTD PROV 1.0//EN") == 0) {
+        && strcmp((char *)document->intSubset->ExternalID, "-//WAPFORUM//DTD PROV 1.0//EN") == 0) {
         /* OMA ProvCont */
         (*otabxml)->wbxml_version = 0x03; /* WBXML Version number 1.3  */
         (*otabxml)->public_id = 0x0B; /* Public id for this kind of doc */  
@@ -615,7 +615,7 @@ static int parse_ota_syncsettings(xmlNodePtr node, simple_binary_t **otabxml)
 
     name = NULL;
     content = NULL;
-    name = octstr_create(node->name);
+    name = octstr_create((char *)node->name);
     if (octstr_len(name) == 0) {
         goto error;
     }
@@ -636,8 +636,8 @@ static int parse_ota_syncsettings(xmlNodePtr node, simple_binary_t **otabxml)
 
     /* if the node has CDATA content output it. 
      * Else expect child tags */
-    if (!only_blanks(node->children->content)) {
-        content = octstr_create(node->children->content);
+    if (!only_blanks((char *)node->children->content)) {
+        content = octstr_create((char *)node->children->content);
         parse_inline_string(content, otabxml);
     }
 
@@ -688,7 +688,7 @@ static int parse_element(xmlNodePtr node, simple_binary_t **otabxml)
         }
     }
 
-    name = octstr_create(node->name);
+    name = octstr_create((char *)node->name);
     if (octstr_len(name) == 0) {
         octstr_destroy(name);
         return -1;
@@ -752,10 +752,10 @@ static int parse_attribute(xmlAttrPtr attr, simple_binary_t **otabxml)
     size_t i, limit;
     ota_3table_t *alist;
 
-    name = octstr_create(attr->name);
+    name = octstr_create((char *)attr->name);
 
     if (attr->children != NULL)
-        value = create_octstr_from_node(attr->children);
+        value = create_octstr_from_node((char *)attr->children);
     else 
         value = NULL;
 
@@ -812,6 +812,12 @@ static int parse_attribute(xmlAttrPtr attr, simple_binary_t **otabxml)
             output_char(OMA_VALUE_TAG, otabxml);
         output_char(ota_hex, otabxml);
     } else {
+        /* Switch code page. */
+        if (alist[i].code_page != (*otabxml)->code_page) {
+            output_char(0, otabxml);
+            output_char(alist[i].code_page, otabxml);
+            (*otabxml)->code_page = alist[i].code_page;
+        }
         output_char(ota_hex, otabxml);
         parse_inline_string(value, otabxml);
     }  

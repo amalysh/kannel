@@ -1,7 +1,7 @@
 /* ====================================================================
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2007 Kannel Group  
+ * Copyright (c) 2001-2009 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -80,7 +80,8 @@
  * which makes passing of the &args a bit tricky 
  */
 #if (defined(__linux__) && (defined(__powerpc__) || defined(__s390__) || defined(__x86_64))) || \
-    (defined(__FreeBSD__) && defined(__amd64__))
+    (defined(__FreeBSD__) && defined(__amd64__)) || \
+    (defined(DARWIN) && defined(__x86_64__))
 #define VARGS(x)   (x)
 #define VALPARM(y) va_list y
 #define VALST(z)   (z)
@@ -348,7 +349,10 @@ long octstr_len(const Octstr *ostr)
 Octstr *octstr_copy_real(const Octstr *ostr, long from, long len, const char *file, long line,
                          const char *func)
 {
-    seems_valid(ostr);
+    if (ostr == NULL)
+        return octstr_create("");
+
+    seems_valid_real(ostr, file, line, func);
     gw_assert(from >= 0);
     gw_assert(len >= 0);
 
@@ -369,7 +373,7 @@ Octstr *octstr_duplicate_real(const Octstr *ostr, const char *file, long line,
 {
     if (ostr == NULL)
         return NULL;
-    seems_valid(ostr);
+    seems_valid_real(ostr, file, line, func);
     return octstr_create_from_data_trace(ostr->data, ostr->len, file, line, func);
 }
 
@@ -1004,7 +1008,7 @@ int octstr_str_ncompare(const Octstr *ostr, const char *str, long n)
 }
 
 
-int octstr_search_char(const Octstr *ostr, int ch, long pos)
+long octstr_search_char(const Octstr *ostr, int ch, long pos)
 {
     unsigned char *p;
 
@@ -1023,7 +1027,7 @@ int octstr_search_char(const Octstr *ostr, int ch, long pos)
 }
 
 
-int octstr_search_chars(const Octstr *ostr, const Octstr *chars, long pos)
+long octstr_search_chars(const Octstr *ostr, const Octstr *chars, long pos)
 {
     long i, j;
 
@@ -1041,7 +1045,7 @@ int octstr_search_chars(const Octstr *ostr, const Octstr *chars, long pos)
 }
 
 
-int octstr_search(const Octstr *haystack, const Octstr *needle, long pos)
+long octstr_search(const Octstr *haystack, const Octstr *needle, long pos)
 {
     int first;
 
@@ -1073,7 +1077,7 @@ int octstr_search(const Octstr *haystack, const Octstr *needle, long pos)
 }
 
 
-int octstr_case_search(const Octstr *haystack, const Octstr *needle, long pos)
+long octstr_case_search(const Octstr *haystack, const Octstr *needle, long pos)
 {
     long i, j;
     int c1, c2;
@@ -1100,7 +1104,7 @@ int octstr_case_search(const Octstr *haystack, const Octstr *needle, long pos)
     return -1;    
 }
 
-int octstr_case_nsearch(const Octstr *haystack, const Octstr *needle, long pos, long n)
+long octstr_case_nsearch(const Octstr *haystack, const Octstr *needle, long pos, long n)
 {
     long i, j;
     int c1, c2;
@@ -1685,8 +1689,8 @@ void octstr_url_encode(Octstr *ostr)
 
 int octstr_url_decode(Octstr *ostr)
 {
-    unsigned char *string = ostr->data;
-    unsigned char *dptr = ostr->data;
+    unsigned char *string;
+    unsigned char *dptr;
     int code, code2, ret = 0;
 
     if (ostr == NULL)
@@ -1697,6 +1701,9 @@ int octstr_url_decode(Octstr *ostr)
 
     if (ostr->len == 0)
         return 0;
+
+    string = ostr->data;
+    dptr = ostr->data;
 
     do {
         if (*string == '%') {
@@ -2218,11 +2225,16 @@ static void format_prec(struct format *format, const char **fmt,
 
 static void format_type(struct format *format, const char **fmt)
 {
-    switch (**fmt)
-    {
+    switch (**fmt) {
     case 'h':
-    case 'l':
         format->type = **fmt;
+        ++(*fmt);
+        break;
+    case 'l':
+        if (*(*fmt + 1) == 'l'){
+           format->type = 'L';
+           ++(*fmt);
+        } else format->type = **fmt;
         ++(*fmt);
         break;
     }
@@ -2234,8 +2246,8 @@ static void convert(Octstr *os, struct format *format, const char **fmt,
 {
     Octstr *new;
     char *s, *pad;
-    long n;
-    unsigned long u;
+    long long n;
+    unsigned long long u;
     char tmpfmt[1024];
     char tmpbuf[1024];
     char c;
@@ -2253,6 +2265,9 @@ static void convert(Octstr *os, struct format *format, const char **fmt,
     case 'd':
     case 'i':
         switch (format->type) {
+        case 'L':
+            n = va_arg(VALST(args), long long);
+            break;
         case 'l':
             n = va_arg(VALST(args), long);
             break;
@@ -2271,18 +2286,21 @@ static void convert(Octstr *os, struct format *format, const char **fmt,
     case 'u':
     case 'x':
     case 'X':
-	switch (format->type) {
-	case 'l':
-	    u = va_arg(VALST(args), unsigned long);
-	    break;
-        case 'h':
-            u = (unsigned short) va_arg(VALST(args), unsigned int);
-            break;
-        default:
-            u = va_arg(VALST(args), unsigned int);
-            break;
-        }
-        tmpfmt[0] = '%';
+   switch (format->type) {
+   case 'l':
+      u = va_arg(VALST(args), unsigned long);
+      break;
+   case 'L':
+      u = va_arg(VALST(args), unsigned long long);
+      break;
+   case 'h':
+      u = (unsigned short) va_arg(VALST(args), unsigned int);
+      break;
+   default:
+      u = va_arg(VALST(args), unsigned int);
+      break;
+   }
+   tmpfmt[0] = '%';
 	tmpfmt[1] = 'l';
 	tmpfmt[2] = **fmt;
 	tmpfmt[3] = '\0';

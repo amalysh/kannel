@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2007 Kannel Group  
+ * Copyright (c) 2001-2009 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -170,7 +170,9 @@ SMSCConn *smscconn_create(CfgGroup *grp, int start_as_stopped)
     conn->is_stopped = start_as_stopped;
 
     conn->received = counter_create();
+    conn->received_dlr = counter_create();
     conn->sent = counter_create();
+    conn->sent_dlr = counter_create();
     conn->failed = counter_create();
     conn->flow_mutex = mutex_create();
 
@@ -222,12 +224,19 @@ SMSCConn *smscconn_create(CfgGroup *grp, int start_as_stopped)
         octstr_destroy(tmp);
         info(0, "Set throughput to %.3f for smsc id <%s>", conn->throughput, octstr_get_cstr(conn->id));
     }
+    /* Sets the admin_id. Equals to connection id if empty */
+    GET_OPTIONAL_VAL(conn->admin_id, "smsc-admin-id");
+    if (conn->admin_id == NULL)
+        conn->admin_id = octstr_duplicate(conn->id);
 
     /* configure the internal rerouting rules for this smsc id */
     init_reroute(conn, grp);
 
     if (cfg_get_integer(&conn->log_level, grp, octstr_imm("log-level")) == -1)
         conn->log_level = 0;
+
+    if (cfg_get_integer(&conn->max_sms_octets, grp, octstr_imm("max-sms-octets")) == -1)
+        conn->max_sms_octets = MAX_SMS_OCTETS;
 
     /* open a smsc-id specific log-file in exlusive mode */
     if (conn->log_file)
@@ -273,6 +282,8 @@ SMSCConn *smscconn_create(CfgGroup *grp, int start_as_stopped)
         ret = smsc_smasi_create(conn, grp);
     else if (octstr_compare(smsc_type, octstr_imm("oisd")) == 0)
         ret = smsc_oisd_create(conn, grp);
+    else if (octstr_compare(smsc_type, octstr_imm("loopback")) == 0)
+        ret = smsc_loopback_create(conn, grp);
     else
         ret = smsc_wrapper_create(conn, grp);
 
@@ -325,11 +336,14 @@ int smscconn_destroy(SMSCConn *conn)
     mutex_lock(conn->flow_mutex);
 
     counter_destroy(conn->received);
+    counter_destroy(conn->received_dlr);
     counter_destroy(conn->sent);
+    counter_destroy(conn->sent_dlr);
     counter_destroy(conn->failed);
 
     octstr_destroy(conn->name);
     octstr_destroy(conn->id);
+    octstr_destroy(conn->admin_id);
     gwlist_destroy(conn->allowed_smsc_id, octstr_destroy_item);
     gwlist_destroy(conn->denied_smsc_id, octstr_destroy_item);
     gwlist_destroy(conn->preferred_smsc_id, octstr_destroy_item);
@@ -404,6 +418,13 @@ const Octstr *smscconn_id(SMSCConn *conn)
 {
     gw_assert(conn != NULL);
     return conn->id;
+}
+
+
+const Octstr *smscconn_admin_id(SMSCConn *conn)
+{
+    gw_assert(conn != NULL);
+    return conn->admin_id;
 }
 
 
@@ -512,7 +533,7 @@ int smscconn_send(SMSCConn *conn, Msg *msg)
 
         /* split msg */
         parts = sms_split(msg, NULL, NULL, NULL, NULL, 1, 
-            counter_increase(split_msg_counter) & 0xff, 0xff, MAX_SMS_OCTETS);
+            counter_increase(split_msg_counter) & 0xff, 0xff, conn->max_sms_octets);
         if (gwlist_len(parts) == 1) {
             /* don't create split_parts of sms fit into one */
             gwlist_destroy(parts, msg_destroy_item);
@@ -582,6 +603,8 @@ int smscconn_info(SMSCConn *conn, StatusInfo *infotable)
     
     infotable->sent = counter_value(conn->sent);
     infotable->received = counter_value(conn->received);
+    infotable->sent_dlr = counter_value(conn->sent_dlr);
+    infotable->received_dlr = counter_value(conn->received_dlr);
     infotable->failed = counter_value(conn->failed);
 
     if (conn->queued)

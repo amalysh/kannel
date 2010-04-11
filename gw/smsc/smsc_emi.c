@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2007 Kannel Group  
+ * Copyright (c) 2001-2009 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -274,8 +274,7 @@ static Connection *open_send_connection(SMSCConn *conn)
     int connect_error = 0;
     int wait_ack = 0;
 
-    do_alt_host = octstr_len(privdata->alt_host) != 0 || 
-	    privdata->alt_port != 0;
+    do_alt_host = octstr_len(privdata->alt_host) != 0 || privdata->alt_port != 0;
 
     alt_host = 0;
 
@@ -300,17 +299,27 @@ static Connection *open_send_connection(SMSCConn *conn)
 	if (alt_host != 1) {
 	    info(0, "EMI2[%s]: connecting to Primary SMSC",
 			    octstr_get_cstr(privdata->name));
+        mutex_lock(conn->flow_mutex);
+        octstr_destroy(conn->name);
+        conn->name = octstr_format("EMI2:%S:%d:%S", privdata->host, privdata->port, privdata->username ? privdata->username : octstr_imm("null"));
+        mutex_unlock(conn->flow_mutex);
 	    server = conn_open_tcp_with_port(privdata->host, privdata->port,
 					     privdata->our_port,
 					     conn->our_host);
 	    if(do_alt_host)
-		alt_host=1;
+            alt_host=1;
 	    else
-		alt_host=0;
+            alt_host=0;
 	} else {
 	    info(0, "EMI2[%s]: connecting to Alternate SMSC",
 			    octstr_get_cstr(privdata->name));
 	    /* use alt_host or/and alt_port if defined */
+        mutex_lock(conn->flow_mutex);
+        octstr_destroy(conn->name);
+        conn->name = octstr_format("EMI2:%S:%d:%S", octstr_len(privdata->alt_host) ? privdata->alt_host : privdata->host,
+                                  privdata->alt_port ? privdata->alt_port : privdata->port,
+								  privdata->username ? privdata->username : octstr_imm("null"));
+        mutex_unlock(conn->flow_mutex);
 	    server = conn_open_tcp_with_port(
 		(octstr_len(privdata->alt_host) ? privdata->alt_host : privdata->host),
 		(privdata->alt_port ? privdata->alt_port : privdata->port),
@@ -1805,7 +1814,7 @@ int smsc_emi2_create(SMSCConn *conn, CfgGroup *cfg)
 
 error:
     error(0, "EMI2[%s]: Failed to create emi2 smsc connection",
-	  octstr_get_cstr(privdata->name));
+            (privdata ? octstr_get_cstr(privdata->name) : "-"));
     if (privdata != NULL) {
 	gw_prioqueue_destroy(privdata->outgoing_queue, NULL);
     }
@@ -1815,6 +1824,6 @@ error:
     octstr_destroy(host);
     conn->why_killed = SMSCCONN_KILLED_CANNOT_CONNECT;
     conn->status = SMSCCONN_DEAD;
-    info(0, "EMI2[%s]: exiting", octstr_get_cstr(privdata->name));
+    info(0, "EMI2[%s]: exiting", (privdata ? octstr_get_cstr(privdata->name) : "-"));
     return -1;
 }
