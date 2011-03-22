@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2009 Kannel Group  
+ * Copyright (c) 2001-2010 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -94,6 +94,8 @@ SINGLE_GROUP(core,
     OCTSTR(wdp-interface-name)
     OCTSTR(log-file)
     OCTSTR(log-level)
+    OCTSTR(syslog-level)
+    OCTSTR(syslog-facility)
     OCTSTR(access-log)
     OCTSTR(access-log-time)
     OCTSTR(access-log-format)
@@ -152,6 +154,7 @@ SINGLE_GROUP(wapbox,
     OCTSTR(log-file)
     OCTSTR(log-level)
     OCTSTR(syslog-level)
+    OCTSTR(syslog-facility)
     OCTSTR(smart-errors)
     OCTSTR(access-log)
     OCTSTR(access-log-time)
@@ -263,6 +266,8 @@ SINGLE_GROUP(smsbox,
     OCTSTR(global-sender)
     OCTSTR(log-file)
     OCTSTR(log-level)
+    OCTSTR(syslog-level)
+    OCTSTR(syslog-facility)
     OCTSTR(access-log)
     OCTSTR(access-log-time)
     OCTSTR(access-log-clean)
@@ -389,6 +394,7 @@ MULTI_GROUP(smsc,
     OCTSTR(max-sms-octets)
     OCTSTR(login-prompt)
     OCTSTR(password-prompt)
+    OCTSTR(ssl-client-certkey-file)
     OCTSTR(generic-param-username)
     OCTSTR(generic-param-password)
     OCTSTR(generic-param-from)
@@ -532,6 +538,7 @@ MULTI_GROUP(modems,
     OCTSTR(keepalive-cmd)
     OCTSTR(broken)
     OCTSTR(message-storage)
+    OCTSTR(message-start)
     OCTSTR(enable-mms)
     OCTSTR(reset-string)
 )

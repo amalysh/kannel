@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2009 Kannel Group  
+ * Copyright (c) 2001-2010 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -278,7 +278,7 @@ static int at2_open_device(PrivAT2data *privdata)
 static void at2_close_device(PrivAT2data *privdata)
 {
     info(0, "AT2[%s]: Closing device", octstr_get_cstr(privdata->name));
-	if (privdata->fd != -1)
+    if (privdata->fd != -1)
         close(privdata->fd);
     privdata->fd = -1;
     privdata->pin_ready = 0;
@@ -910,7 +910,7 @@ static int at2_wait_modem_command(PrivAT2data *privdata, time_t timeout, int gt_
     O_DESTROY(line);
     O_DESTROY(line2);
     O_DESTROY(pdu);
-	O_DESTROY(smsc_number);
+    O_DESTROY(smsc_number);
     return -1; /* timeout */
 
 end:
@@ -1087,6 +1087,7 @@ static int at2_read_sms_memory(PrivAT2data* privdata)
          */
         int i;
         int message_count = 0; /* cound number of messages collected */
+        ModemDef *modem = privdata->modem;
 
         debug("bb.smsc.at2", 0, "AT2[%s]: %d messages waiting in memory", 
               octstr_get_cstr(privdata->name), privdata->sms_memory_usage);
@@ -1094,8 +1095,7 @@ static int at2_read_sms_memory(PrivAT2data* privdata)
         /*
          * loop till end of memory or collected enouch messages
          */
-        for (i = 1; i <= privdata->sms_memory_capacity &&
-             message_count < privdata->sms_memory_usage; ++i) { 
+        for (i = modem->message_start; i < (privdata->sms_memory_capacity  + modem->message_start) && message_count < privdata->sms_memory_usage; ++i) {
 
             /* if (meanwhile) there are pending CMTI notifications, process these first
              * to not let CMTI and sim buffering sit in each others way */
@@ -1377,6 +1377,7 @@ reconnect:
 
         /* read error, so re-connect */
         if (privdata->fd == -1) {
+            at2_close_device(privdata);
             reconnecting = 1;
             goto reconnect;
         }
@@ -2123,7 +2124,7 @@ static Msg *at2_pdu_decode_report_sm(Octstr *data, PrivAT2data *privdata)
      * categories. It will catch "reserved" values where the first 3 MSBits 
      * are not set as "Success" which may not be correct. */
 
-    if ((dlrmsg = dlr_find(privdata->conn->id, msg_id, receiver, type)) == NULL) {
+    if ((dlrmsg = dlr_find(privdata->conn->id, msg_id, receiver, type, 0)) == NULL) {
         debug("bb.smsc.at2", 1, "AT2[%s]: Received delivery notification but can't find that ID in the DLR storage",
               octstr_get_cstr(privdata->name));
 	    goto error;
@@ -2238,13 +2239,13 @@ static void at2_send_one_message(PrivAT2data *privdata, Msg *msg)
 
     if (msg_type(msg) == sms) {
         Octstr *pdu;
+        int msg_id = -1;
 
         if ((pdu = at2_pdu_encode(msg, privdata)) == NULL) {
             error(2, "AT2[%s]: Error encoding PDU!",octstr_get_cstr(privdata->name));
             return;
         }
 
-        int msg_id = -1;
         /* 
          * send the initial command and then wait for > 
          */
@@ -2268,13 +2269,10 @@ static void at2_send_one_message(PrivAT2data *privdata, Msg *msg)
              */
 
             if (octstr_compare(privdata->modem->id, octstr_imm("nokiaphone")) != 0) { 
-
                 sprintf(command, "%s%s", sc, octstr_get_cstr(pdu));
                 at2_write(privdata, command);
                 at2_write_ctrlz(privdata);
-
             } else {
-
                 /* include the CTRL-Z in the PDU string */
                 sprintf(command, "%s%s%c", sc, octstr_get_cstr(pdu), 0x1A);
 
@@ -2308,7 +2306,7 @@ static void at2_send_one_message(PrivAT2data *privdata, Msg *msg)
             if (ret != 0) {
                 bb_smscconn_send_failed(privdata->conn, msg,
                         SMSCCONN_FAILED_TEMPORARILY, octstr_create("ERROR"));
-            }else{
+            } else {
                 /* store DLR message if needed for SMSC generated delivery reports */
                 if (DLR_IS_ENABLED_DEVICE(msg->sms.dlr_mask)) {
                     if (msg_id == -1)
@@ -2326,6 +2324,14 @@ static void at2_send_one_message(PrivAT2data *privdata, Msg *msg)
 
                 bb_smscconn_sent(privdata->conn, msg, NULL);
             }
+        } else {
+            error(0,"AT2[%s]: Error received, notifying failure, "
+                 "sender: %s receiver: %s msgdata: %s udhdata: %s",
+                  octstr_get_cstr(privdata->name),
+                  octstr_get_cstr(msg->sms.sender), octstr_get_cstr(msg->sms.receiver),
+                  octstr_get_cstr(msg->sms.msgdata), octstr_get_cstr(msg->sms.udhdata));
+            bb_smscconn_send_failed(privdata->conn, msg,
+                                    SMSCCONN_FAILED_TEMPORARILY, octstr_create("ERROR"));
         }
         O_DESTROY(pdu);
     }
@@ -2827,6 +2833,8 @@ static ModemDef *at2_read_modems(PrivAT2data *privdata, Octstr *file, Octstr *id
             modem->keepalive_cmd = octstr_create("AT");
 
         modem->message_storage = cfg_get(grp, octstr_imm("message-storage"));
+        if (cfg_get_integer(&modem->message_start, grp, octstr_imm("message-start")))
+            modem->message_start = 1;
 
         cfg_get_bool(&modem->enable_mms, grp, octstr_imm("enable-mms"));
 

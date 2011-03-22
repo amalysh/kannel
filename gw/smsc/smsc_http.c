@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2009 Kannel Group  
+ * Copyright (c) 2001-2010 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -643,7 +643,7 @@ static void kannel_receive_sms(SMSCConn *conn, HTTPClient *client,
         dlrmsg = dlr_find(conn->id,
             dlrmid, /* message id */
             to, /* destination */
-            dlrmask);
+            dlrmask, 0);
 
         if (dlrmsg != NULL) {
             dlrmsg->sms.sms_type = report_mo;
@@ -931,8 +931,8 @@ static void clickatell_receive_sms(SMSCConn *conn, HTTPClient *client,
 	}
         dlrmsg = dlr_find(conn->id,
             apimsgid, /* smsc message id */
-            dest , /* destination */
-            dlrstat);
+            dest, /* destination */
+            dlrstat, 0);
 
         if (dlrmsg != NULL) {
             /* dlrmsg->sms.msgdata = octstr_duplicate(apimsgid); */
@@ -1410,8 +1410,8 @@ static void xidris_receive_sms(SMSCConn *conn, HTTPClient *client,
 
         dlrmsg = dlr_find(conn->id,
             mid, /* smsc message id */
-            dest , /* destination */
-            dlrstat);
+            dest, /* destination */
+            dlrstat, 0);
 
         if (dlrmsg != NULL) {
             dlrmsg->sms.msgdata = octstr_duplicate(mid);
@@ -1681,7 +1681,7 @@ static void generic_receive_sms(SMSCConn *conn, HTTPClient *client,
         dlrmsg = dlr_find(conn->id,
             dlrmid, /* message id */
             to, /* destination */
-            dlrmask);
+            dlrmask, 0);
 
         if (dlrmsg != NULL) {
             dlrmsg->sms.sms_type = report_mo;
@@ -1890,7 +1890,7 @@ static int httpsmsc_send(SMSCConn *conn, Msg *msg)
     }
 
     /* convert character encoding if required */
-    if (conndata->alt_charset && 
+    if (msg->sms.coding == DC_7BIT && conndata->alt_charset &&
         charset_convert(sms->sms.msgdata, DEFAULT_CHARSET,
                         octstr_get_cstr(conndata->alt_charset)) != 0)
         error(0, "Failed to convert msgdata from charset <%s> to <%s>, will send as is.",

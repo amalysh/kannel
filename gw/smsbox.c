@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2009 Kannel Group  
+ * Copyright (c) 2001-2010 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -908,11 +908,10 @@ static void fill_message(Msg *msg, URLTranslation *trans,
     }
 
     if (validity != SMS_PARAM_UNDEFINED) {
-	if (urltrans_accept_x_kannel_headers(trans))
-	    msg->sms.validity = validity;
-	else
-	    warning(0, "Tried to change validity to '%d', denied.",
-		    validity);
+        if (urltrans_accept_x_kannel_headers(trans))
+            msg->sms.validity = validity;
+        else
+            warning(0, "Tried to change validity to '%d', denied.", validity);
     }
     if (deferred != SMS_PARAM_UNDEFINED) {
 	if (urltrans_accept_x_kannel_headers(trans))
@@ -1367,9 +1366,8 @@ static int obey_request(Octstr **result, URLTranslation *trans, Msg *msg)
 	}
 	if (msg->sms.validity != SMS_PARAM_UNDEFINED) {
 	    Octstr *os;
-	    os = octstr_format("%d",msg->sms.validity);
-	    http_header_add(request_headers, "X-Kannel-Validity",
-	    	octstr_get_cstr(os));
+	    os = octstr_format("%d", msg->sms.validity);
+	    http_header_add(request_headers, "X-Kannel-Validity", octstr_get_cstr(os));
 	    octstr_destroy(os);
 	}
 	if (msg->sms.deferred != SMS_PARAM_UNDEFINED) {
@@ -3402,6 +3400,22 @@ static Cfg *init_smsbox(Cfg *cfg)
 	     octstr_get_cstr(logfile), lvl);
 	log_open(octstr_get_cstr(logfile), lvl, GW_NON_EXCL);
 	octstr_destroy(logfile);
+    }
+    if ((p = cfg_get(grp, octstr_imm("syslog-level"))) != NULL) {
+        long level;
+        Octstr *facility;
+        if ((facility = cfg_get(grp, octstr_imm("syslog-facility"))) != NULL) {
+            log_set_syslog_facility(octstr_get_cstr(facility));
+            octstr_destroy(facility);
+        }
+        if (octstr_compare(p, octstr_imm("none")) == 0) {
+            log_set_syslog(NULL, 0);
+        } else if (octstr_parse_long(&level, p, 0, 10) > 0) {
+            log_set_syslog("smsbox", level);
+        }
+        octstr_destroy(p);
+    } else {
+        log_set_syslog(NULL, 0);
     }
     if (global_sender != NULL) {
 	info(0, "Service global sender set as '%s'", 

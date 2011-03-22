@@ -1,7 +1,7 @@
 /* ====================================================================
  * The Kannel Software License, Version 1.0
  *
- * Copyright (c) 2001-2009 Kannel Group
+ * Copyright (c) 2001-2010 Kannel Group
  * Copyright (c) 1998-2001 WapIT Ltd.
  * All rights reserved.
  *
@@ -1226,6 +1226,15 @@ int smsbox_start(Cfg *cfg)
         smsbox_max_pending = SMSBOX_MAX_PENDING;
         info(0, "BOXC: 'smsbox-max-pending' not set, using default (%ld).", smsbox_max_pending);
     }
+
+    box_allow_ip = cfg_get(grp, octstr_imm("box-allow-ip"));
+    if (box_allow_ip == NULL)
+        box_allow_ip = octstr_create("");
+    box_deny_ip = cfg_get(grp, octstr_imm("box-deny-ip"));
+    if (box_deny_ip == NULL)
+        box_deny_ip = octstr_create("");
+    if (box_allow_ip != NULL && box_deny_ip == NULL)
+        info(0, "Box connection allowed IPs defined without any denied...");
 
     smsbox_list = gwlist_create();	/* have a list of connections */
     smsbox_list_rwlock = gw_rwlock_create();

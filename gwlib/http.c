@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2009 Kannel Group  
+ * Copyright (c) 2001-2010 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -567,49 +567,49 @@ static int entity_read(HTTPEntity *ent, Connection *conn)
      * So keep looping as long as the state changes.
      */
     do {
-	old_state = ent->state;
-	switch (ent->state) {
-	case reading_headers:
-	    ret = read_some_headers(conn, ent->headers);
-            if (ret == 0)
-	        deduce_body_state(ent);
-	    if (ret < 0)
-		return -1;
-	    break;
+        old_state = ent->state;
+        switch (ent->state) {
+        case reading_headers:
+            ret = read_some_headers(conn, ent->headers);
+                if (ret == 0)
+                deduce_body_state(ent);
+            if (ret < 0)
+            return -1;
+            break;
 
-	case reading_chunked_body_len:
-	    read_chunked_body_len(ent, conn);
-	    break;
-		
-	case reading_chunked_body_data:
-	    read_chunked_body_data(ent, conn);
-	    break;
+        case reading_chunked_body_len:
+            read_chunked_body_len(ent, conn);
+            break;
 
-	case reading_chunked_body_crlf:
-	    read_chunked_body_crlf(ent, conn);
-	    break;
+        case reading_chunked_body_data:
+            read_chunked_body_data(ent, conn);
+            break;
 
-	case reading_chunked_body_trailer:
-	    read_chunked_body_trailer(ent, conn);
-	    break;
+        case reading_chunked_body_crlf:
+            read_chunked_body_crlf(ent, conn);
+            break;
 
-	case reading_body_until_eof:
-	    read_body_until_eof(ent, conn);
-	    break;
+        case reading_chunked_body_trailer:
+            read_chunked_body_trailer(ent, conn);
+            break;
 
-	case reading_body_with_length:
-	    read_body_with_length(ent, conn);
-	    break;
+        case reading_body_until_eof:
+            read_body_until_eof(ent, conn);
+            break;
 
-	case body_error:
-	    return -1;
+        case reading_body_with_length:
+            read_body_with_length(ent, conn);
+            break;
 
-	case entity_done:
-	    return 0;
+        case body_error:
+            return -1;
 
-	default:
-	    panic(0, "Internal error: Invalid HTTPEntity state.");
-	}
+        case entity_done:
+            return 0;
+
+        default:
+            panic(0, "Internal error: Invalid HTTPEntity state.");
+        }
     } while (ent->state != old_state);
 
     /*
@@ -1063,32 +1063,32 @@ static void handle_transaction(Connection *conn, void *data)
             }
             break;
 
-	case reading_status:
-	    ret = client_read_status(trans);
-	    if (ret < 0) {
-		/*
-		 * Couldn't read the status from the socket. This may mean 
-		 * that the socket had been closed by the server after an 
-		 * idle timeout.
-		 */
+        case reading_status:
+            ret = client_read_status(trans);
+            if (ret < 0) {
+                /*
+                 * Couldn't read the status from the socket. This may mean
+                 * that the socket had been closed by the server after an
+                 * idle timeout.
+                 */
                 debug("gwlib.http",0,"Failed while reading status");
                 goto error;
-	    } else if (ret == 0) {
-		/* Got the status, go read headers and body next. */
-		trans->state = reading_entity;
-		trans->response =
-		    entity_create(response_expectation(trans->method, trans->status));
-	    } else
-		return;
-	    break;
-	    
-	case reading_entity:
-	    ret = entity_read(trans->response, conn);
-	    if (ret < 0) {
-	        debug("gwlib.http",0,"Failed reading entity");
-	        goto error;
-	    } else if (ret == 0 && 
-                    http_status_class(trans->status) == HTTP_STATUS_PROVISIONAL) {
+            } else if (ret == 0) {
+                /* Got the status, go read headers and body next. */
+                trans->state = reading_entity;
+                trans->response = entity_create(response_expectation(trans->method, trans->status));
+            } else {
+                return;
+            }
+            break;
+
+        case reading_entity:
+            ret = entity_read(trans->response, conn);
+            if (ret < 0) {
+                debug("gwlib.http",0,"Failed reading entity");
+                goto error;
+            } else if (ret == 0 &&
+                       http_status_class(trans->status) == HTTP_STATUS_PROVISIONAL) {
                 /* This was a provisional reply; get the real one now. */
                 trans->state = reading_status;
                 entity_destroy(trans->response);
@@ -1102,7 +1102,7 @@ static void handle_transaction(Connection *conn, void *data)
                 octstr_dump(h, 0);
                 octstr_destroy(h);
 #endif
-	    } else {
+            } else {
                 return;
             }
             break;
@@ -2280,11 +2280,13 @@ static void server_thread(void *dummy)
 
     n = 0;
     while (run_status == running && keep_servers_open) {
-        if (n == 0 || gwlist_len(new_server_sockets) > 0) {
+        while (n == 0 || gwlist_len(new_server_sockets) > 0) {
             struct server *p = gwlist_consume(new_server_sockets);
             if (p == NULL) {
                 debug("gwlib.http", 0, "HTTP: No new servers. Quitting.");
                 break;
+            } else {
+                debug ("gwlib.http", 0, "HTTP: Including port %d, fd %d for polling in server thread", p->port, p->fd);
             }
             if (tab_size <= n) {
                 tab_size++;
@@ -2612,8 +2614,7 @@ void http_send_reply(HTTPClient *client, int status, List *headers,
     octstr_format_append(response, "Date: %s\r\n", octstr_get_cstr(date));
     octstr_destroy(date);
     
-    octstr_format_append(response, "Content-Length: %ld\r\n",
-			 octstr_len(body));
+    octstr_format_append(response, "Content-Length: %ld\r\n", octstr_len(body));
 
     /* 
      * RFC2616, sec. 8.1.2.1 says that if the server chooses to close the 
@@ -2661,6 +2662,10 @@ void http_close_client(HTTPClient *client)
     client_destroy(client);
 }
 
+int http_method(HTTPClient *client)
+{
+    return client->method;
+}
 
 static void server_init(void)
 {

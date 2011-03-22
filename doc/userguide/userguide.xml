@@ -68,7 +68,7 @@
 		<firstname>Alexander</firstname>
 		<surname>Malysh</surname>
 		<affiliation>
-			<jobtitle>Developer</jobtitle>
+			<jobtitle>Senior Software Engineer</jobtitle>
 			<orgname>GTX Ltd.</orgname>
 			<address> 
 				<email>amalysh at kannel.org</email>
@@ -1329,6 +1329,24 @@ admin-password = f00bar
 		           [flags:%m:%c:%M:%C:%d] [msg:%L:%b] [udh:%U:%u]"</literal>
      </entry></row>
 
+    <row><entry><literal>syslog-level</literal></entry>
+     <entry>number</entry>
+     <entry valign="bottom">
+	 Messages of this log level or higher will also be
+	 sent to syslog, the UNIX system log daemon. If not explicitly
+         set with <literal>syslog-facility</literal>, it logs under the
+         'daemon' category. The default is not to use syslog, and you can
+         set that explicitly by setting <literal>syslog-level</literal>
+	 to 'none'.
+     </entry></row>
+
+    <row><entry><literal>syslog-facility</literal></entry>
+     <entry>string</entry>
+     <entry valign="bottom">
+         The syslog facility to send the syslog entries to. The
+         default is 'daemon'.
+     </entry></row>
+
     <row><entry><literal>unified-prefix</literal></entry>
      <entry>prefix-list</entry>
      <entry valign="bottom">
@@ -1473,9 +1491,15 @@ admin-password = f00bar
      <entry valign="bottom">
         Defines the way DLRs are stored. If you have build-in external 
           DLR storage support, i.e. using MySQL you may define here the
-          alternative storage type like 'mysql'. Supported types are:
-          internal, mysql, pgsql, sdb, mssql and oracle. By default this
-          is set to 'internal'.
+          alternative storage type like <literal>mysql</literal>. 
+          Supported types are:
+          <literal>internal</literal>, 
+          <literal>mysql</literal>,
+          <literal>pgsql</literal>,
+          <literal>sdb</literal>,
+          <literal>mssql</literal>,
+          <literal>sqlite3</literal> and <literal>oracle</literal>.
+          By default this is set to <literal>internal</literal>.
      </entry></row>
 
      <row><entry><literal>maximum-queue-length</literal></entry>
@@ -2105,17 +2129,6 @@ bearerbox-host = localhost
     <row><entry><literal>log-level</literal></entry>
      <entry>number 0..5</entry></row>
 
-    <row><entry><literal>syslog-level</literal></entry>
-     <entry>number</entry>
-     <entry valign="bottom">
-	 Messages of this log level or higher will also be
-	 sent to syslog, the UNIX system log daemon.  The wapbox
-	 logs under the 'daemon' category.
-	 The default is not to use syslog, and you can set that
-	 explicitly by setting <literal>syslog-level</literal>
-	 to 'none'.
-     </entry></row>
-
     <row><entry><literal>access-log</literal></entry>
      <entry>filename</entry>
      <entry valign="bottom">
@@ -2140,7 +2153,25 @@ bearerbox-host = localhost
           anything else will use local time. Default is local time.
      </entry></row>
 
-	 <row><entry><literal>smart-errors</literal></entry>
+    <row><entry><literal>syslog-level</literal></entry>
+     <entry>number</entry>
+     <entry valign="bottom">
+	 Messages of this log level or higher will also be
+	 sent to syslog, the UNIX system log daemon. If not explicitly
+         set with <literal>syslog-facility</literal>, it logs under the
+         'daemon' category. The default is not to use syslog, and you can
+         set that explicitly by setting <literal>syslog-level</literal>
+	 to 'none'.
+     </entry></row>
+
+    <row><entry><literal>syslog-facility</literal></entry>
+     <entry>string</entry>
+     <entry valign="bottom">
+         The syslog facility to send the syslog entries to. The
+         default is 'daemon'.
+     </entry></row>
+
+    <row><entry><literal>smart-errors</literal></entry>
      <entry>bool</entry>
      <entry valign="bottom">
 	 If set wapbox will return a valid WML deck describing the 
@@ -3159,6 +3190,14 @@ address-range = ""
         Defines whether we should try to bind with SSL enabled connection.
      </entry></row>
 
+    <row><entry><literal>ssl-client-certkey-file (c)</literal></entry>
+     <entry>filename</entry>
+     <entry valign="bottom">
+      A PEM encoded SSL certificate and private key file to be used
+      for SSL connections. This option is used together with use-ssl
+      for client certificate validation with SMPP SMSCs requiring it.
+     </entry></row>
+
    <row><entry><literal>transceiver-mode</literal></entry>
      <entry>bool</entry>
      <entry valign="bottom">
@@ -3937,6 +3976,16 @@ pin = 2345
                 By default, if the option is not set, no message storage command
                 will be sent to the modem and the modem's default message
                 storage will be used (usually "SM").
+     </entry></row>
+
+   <row><entry><literal>message-start</literal></entry>
+     <entry><literal>string</literal></entry>
+     <entry valign="bottom">
+        Optional integer, defaults to 1. Specifies starting index in
+                SIM buffer for new SMS. Most modems start numbering from 1,
+                however a few like the UMG181 start numbering from 0. This
+                parameter ensures that all SMS are fetched when using
+                "SIM buffering".
      </entry></row>
 
    <row><entry><literal>enable-mms</literal></entry>
@@ -5416,6 +5465,43 @@ field-boxc-id = boxc
 
     </sect2>
 
+	<sect2>
+	<title>SQLite3 DLR storage</title>
+	<para>To store DLR information into a SQLite3 database you may use the
+	<literal>dlr-storage = sqlite3</literal> configuration directive in the
+	<literal>core</literal> group.
+	</para>
+	<para>In addition to that you must have a <literal>dlr-db</literal>
+	group defined that specifies the table field names that are used to the
+	DLR attributes and a <literal>sqlite3-connection</literal> group that
+	defines the connection to the SQLite3 database itself.
+	</para>
+	<para>Here is the example configuration:
+
+<programlisting>
+group = sqlite3-connection
+id = mydlr
+database = /path/to/file
+max-connections = 1
+
+group = dlr-db
+id = mydlr
+table = dlr
+field-smsc = smsc
+field-timestamp = ts
+field-destination = destination
+field-source = source
+field-service = service
+field-url = url
+field-mask = mask
+field-status = status
+field-boxc-id = boxc
+</programlisting>
+
+	</para>
+
+	</sect2>
+
         <sect2>
 	<title>DLR database field configuration</title>
 	<para>For external database storage of DLR information in relational
@@ -5709,6 +5795,24 @@ ssl-certkey-file
     <row><entry><literal>access-log</literal></entry>
      <entry>filename</entry></row>
 
+    <row><entry><literal>syslog-level</literal></entry>
+     <entry>number</entry>
+     <entry valign="bottom">
+	 Messages of this log level or higher will also be
+	 sent to syslog, the UNIX system log daemon. If not explicitly
+         set with <literal>syslog-facility</literal>, it logs under the
+         'daemon' category. The default is not to use syslog, and you can
+         set that explicitly by setting <literal>syslog-level</literal>
+	 to 'none'.
+     </entry></row>
+
+    <row><entry><literal>syslog-facility</literal></entry>
+     <entry>string</entry>
+     <entry valign="bottom">
+         The syslog facility to send the syslog entries to. The
+         default is 'daemon'.
+     </entry></row>
+
     <row><entry><literal>white-list</literal></entry>
      <entry>URL</entry>
      <entry valign="bottom">
@@ -5816,6 +5920,15 @@ ssl-certkey-file
         Sets socket timeout in seconds for outgoing client http
         connections. Optional. Defaults to 240 seconds.
      </entry></row>
+
+     <row><entry><literal>sms-length</literal></entry>
+        <entry>number</entry>
+        <entry valign="bottom">
+        Maximum allowed number of characters for a single SMS in smsbox.
+        If this maximum exceeds Kannel will split SMS into multiparts.
+        Default: 140
+     </entry></row>
+
   </tbody>
   </tgroup>
  </table>
@@ -6022,17 +6135,16 @@ get-url = "http://%S"
          number of `%s' fields in the URL. This allows you to
         configure the gateway to use different URLs for the same
         keyword depending on the number of words the SMS message
-        contains. The keyword matches in non-case sensitive manner,
-		  which means you don't have to use aliases to handle different
-		  cased versions of your keyword.
+        contains. The keyword is case insensitive, which means you don't
+        have to use aliases to handle different cased versions of your keyword.
      </entry></row>
 
    <row><entry><literal>keyword-regex</literal></entry>
      <entry>POSIX regular expression</entry>
      <entry valign="bottom">
      This field may be used to enable service-selection based on a regular expression.
-     If this field is defined for a service, then the selection will rely on the regex only, never taking
-     the literal <literal>keyword</literal> into account.
+     You can define either keyword or keyword-regex in configuration, but not both in
+     the same sms-service. keyword-regex is case sensitive.
      See section on <xref linkend="regular-expressions"> for details.
    </entry></row>
 
@@ -6040,7 +6152,8 @@ get-url = "http://%S"
      <entry>word-list</entry>
      <entry valign="bottom">
         If the service has aliases, they are listed as a list with 
-        each entry separated with a semicolon (';')
+        each entry separated with a semicolon (';'). Aliases are case
+        insensitive just like keyword.
 
      </entry></row>
 
@@ -6479,6 +6592,10 @@ the SMS ID of the internal message structure
 
 <row><entry><literal>%d</literal></entry><entry>
 the delivery report value
+</entry></row>
+
+<row><entry><literal>%R</literal></entry><entry>
+the delivery report URL value
 </entry></row>
 
 <row><entry><literal>%D</literal></entry><entry>
