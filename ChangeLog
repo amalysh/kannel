@@ -1,7 +1,41 @@
+2011-03-30 Alexander Malysh <amalysh at kannel.org>
+    * applied patch that fixes some issues for HTTP-SMSC:
+      1) added support for max-pending-submits , so that we don't eat all our
+         file descriptors if we have much traffic
+      2) changed open_sends from long to Counter, avoid race conditions
+      3) start new sender_thread because otherwise we are unable to limit max pending
+         submits and if throughput is set we block the whole bearerbox instead of only
+         one SMSC
+      4) changed shutdown sequence to run safe in parallel
+
+2011-03-30 Alexander Malysh <amalysh at kannel.org>
+    * applied patch that fixes DDos issue with our HTTP-Server implementation
+      (consume all available file descriptors) and also adds possibility to
+      set keep alive timeout for each listen port.
+
+This patch will limit maximum open client connections to 500. 
+
+2011-03-25  Stipe Tolj  <stolj at kannel.org>
+    * gwlib/dbpool_sqlite3.c: ensure we handle the sqlite3 version >= 3.3.9
+      function call switching via #if pre-processor macro so we choose either
+      sqlite3_prepare_v2() if we do have a local sqlite3 version that supports
+      it. This ensures we build again on CentOS 5.x ie.
+      [Message-Id: <4D8A73B6.4050508@tolj.org>]
+
 2011-03-22 Alexander Malysh <amalysh at kannel.org>
     * debian/kannel-cvs.init, debian/kannel-devel.init, debian/kannel.init: added status
       command.
       Thanks to Konstantin Vayner <poncha at appcell.net> for this patch.
+
+2011-03-21 Alexander Malysh <amalysh at kannel.org>
+    * test/test_http_server.c: don't do anythink that use threading in signal handler.
+
+2011-03-21 Alexander Malysh <amalysh at kannel.org>
+    * gw/smsc/smsc_http.c: fixed alt-charset issue that we try to reencode even
+      binary and UCS2 data.
+
+2011-03-21 Alexander Malysh <amalysh at kannel.org>
+    * gwlib/http.c: added new method.
 
 2011-03-21 Alexander Malysh <amalysh at kannel.org>
     * test/test_http_server.c: don't do anythink that use threading in signal handler.
