@@ -1,3 +1,62 @@
+2011-07-23 Alexander Malysh <amalysh at kannel.org>
+    * gwlib/log.c: Fixed compilation issue when no syslog defined.
+
+2011-07-12 Vincent CHAVANIS <v.chavanis at telemaque.fr>
+    * gw/smsc/smsc_at.[ch]: added support for throughput in AT smsc
+
+2011-06-13 Alexander Malysh <amalysh at kannel.org>
+    * gw/dlr_oracle.c: fixed sql query syntax error. This fixes #607.
+      Thanks to Heiki Pikker for this patch.
+
+2011-05-20  Stipe Tolj  <stolj at kannel.org>
+    * gw/smsc/smsc_loopback.c: after switching the MT to an MO message
+      we want to clean up any MT specific values, that are still present
+      due to the duplication of the message. This is semantically cleaner.
+
+2011-05-11 Alexander Malysh <amalysh at kannel.org>
+    * configure.in: added MacOSX10.6.sdk 
+
+2011-05-11 Alexander Malysh <amalysh at kannel.org>
+    * gwlib/socket.[ch]: added function to enable/disable Nagle algo.
+
+2011-05-06 Alexander Malysh <amalysh at kannel.org>
+    * doc/userguide/userguide.xml, gw/smsc/smsc_http.c, gwlib/cfg.def:
+      applied patch that adds meta-data to generic http smsc.
+      Thanks to Semion Spivak <semion at smscoin.com> for this patch.
+
+2011-04-28  Stipe Tolj  <stolj at kannel.org>
+    * gw/smsc/smsc_http.c: fixing removed portno assignment in r4894.
+      Thanks to Rene Kluwen for spotting the defect.
+      [Message-Id: <030b01cc052c$60054600$200fd200$@kluwen@chimit.nl>]
+    
+2011-04-18 Alexander Malysh <amalysh at kannel.org>
+    * handle INTERIX differences in the configure.
+
+2011-04-18 Alexander Malysh <amalysh at kannel.org>
+    * removed INTERIX check from gwlib source and put it into configure.
+
+2011-04-18 Alexander Malysh <amalysh at kannel.org>
+    * fixed memory leak.
+      Thanks to Roman Shterenzon <romanbsd at yahoo.com> for this patch.
+
+2011-04-07 Alexander Malysh <amalysh at kannel.org>
+    * fixed kannel monitor web interface after r4897.
+      This close #594.
+      Thanks to Roland Discein.
+
+2011-04-07 Alexander Malysh <amalysh at kannel.org>
+    * applied patch that adds support for limiting listening for smsbox connections
+      to specific interface.
+      Thanks to Roman Shterenzon <romanbsd at yahoo.com>.
+
+2011-04-05 Alexander Malysh <amalysh at kannel.org>
+    * gw/bb_smscconn.c: fixed last commit.
+
+2011-04-05 Alexander Malysh <amalysh at kannel.org>
+    * gw/bb_smscconn.c, gw/smscconn.c, gw/smscconn_p.h: apllied patch that implements
+      speed/throughput meters on a per-smsc basis.
+      Thanks to Alejandro Guerrieri <aguerrieri at kannel.org> for this patch.
+
 2011-03-30 Alexander Malysh <amalysh at kannel.org>
     * applied patch that fixes some issues for HTTP-SMSC:
       1) added support for max-pending-submits , so that we don't eat all our

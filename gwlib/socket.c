@@ -314,6 +314,7 @@ int tcpip_connect_nb_to_server_with_port(char *hostname, int port, int our_port,
                 error(errno, "nonblocking connect to <%s> failed", octstr_get_cstr(ip2));
             }
         }
+        octstr_destroy(ip2);
     } while (rc == -1 && errno != EINPROGRESS && hostinfo.h_addr_list[++i] != NULL);
 
     if (rc == -1 && errno != EINPROGRESS)
@@ -387,6 +388,18 @@ int socket_set_blocking(int fd, int blocking)
     }
 
     return 0;
+}
+
+
+int socket_set_nodelay(int fd, int on)
+{
+    int rc;
+
+    rc = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof (on));
+    if (rc == -1)
+        error(errno, "Unable set TCP_NODELAY(%d)", on);
+
+    return rc;
 }
 
 
