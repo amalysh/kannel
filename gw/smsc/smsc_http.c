@@ -293,6 +293,11 @@ static void httpsmsc_receiver(void *arg)
         if (client == NULL)
             break;
 
+        if (cgivars != NULL) {
+        	octstr_append_char(url, '?');
+        	http_cgivar_dump_into(cgivars, url);
+        }
+
         debug("smsc.http", 0, "HTTP[%s]: Got request `%s'",
               octstr_get_cstr(conn->id), octstr_get_cstr(url));
 
@@ -622,28 +627,26 @@ static void kannel_send_sms(SMSCConn *conn, Msg *sms)
         octstr_format_append(url, "&binfo=%S", sms->sms.binfo);
     if (sms->sms.smsc_id) /* proxy the smsc-id to the next instance */
         octstr_format_append(url, "&smsc=%S", sms->sms.smsc_id);
-    if (sms->sms.dlr_url) {
-        if (conndata->dlr_url) {
-            char id[UUID_STR_LEN + 1];
-            Octstr *mid;
+	if (conndata->dlr_url) {
+		char id[UUID_STR_LEN + 1];
+		Octstr *mid;
 
-            /* create Octstr from UUID */  
-            uuid_unparse(sms->sms.id, id);
-            mid = octstr_create(id); 
+		/* create Octstr from UUID */
+		uuid_unparse(sms->sms.id, id);
+		mid = octstr_create(id);
 
-            octstr_format_append(url, "&dlr-url=%E", conndata->dlr_url);
+		octstr_format_append(url, "&dlr-url=%E", conndata->dlr_url);
 
-            /* encapsulate the orginal DLR-URL, escape code for DLR mask
-             * and message id */
-            octstr_format_append(url, "%E%E%E%E%E", 
-                octstr_imm("&dlr-url="), sms->sms.dlr_url,
-                octstr_imm("&dlr-mask=%d"),
-                octstr_imm("&dlr-mid="), mid);
-                
-            octstr_destroy(mid);
-        } else             
-            octstr_format_append(url, "&dlr-url=%E", sms->sms.dlr_url);
-    }
+		/* encapsulate the original DLR-URL, escape code for DLR mask
+		 * and message id */
+		octstr_format_append(url, "%E%E%E%E%E",
+			octstr_imm("&dlr-url="), sms->sms.dlr_url != NULL ? sms->sms.dlr_url : octstr_imm(""),
+			octstr_imm("&dlr-mask=%d"),
+			octstr_imm("&dlr-mid="), mid);
+
+		octstr_destroy(mid);
+	} else if (sms->sms.dlr_url != NULL)
+		octstr_format_append(url, "&dlr-url=%E", sms->sms.dlr_url);
     if (sms->sms.dlr_mask != DLR_UNDEFINED && sms->sms.dlr_mask != DLR_NOTHING)
         octstr_format_append(url, "&dlr-mask=%d", sms->sms.dlr_mask);
 
@@ -695,12 +698,11 @@ static void kannel_receive_sms(SMSCConn *conn, HTTPClient *client,
 {
     ConnData *conndata = conn->data;
     Octstr *user, *pass, *from, *to, *text, *udh, *account, *binfo;
-    Octstr *dlrurl, *dlrmid;
+    Octstr *dlrurl, *dlrmid, *dlrerr;
     Octstr *tmp_string, *retmsg;
     int	mclass, mwi, coding, validity, deferred, dlrmask;
     List *reply_headers;
     int ret;
-    int dlr_err = 0;
 	
     mclass = mwi = coding = validity = 
         deferred = dlrmask = SMS_PARAM_UNDEFINED;
@@ -743,10 +745,8 @@ static void kannel_receive_sms(SMSCConn *conn, HTTPClient *client,
     if (tmp_string) {
         sscanf(octstr_get_cstr(tmp_string),"%d", &dlrmask);
     }
-    tmp_string = http_cgi_variable(cgivars, "dlr-err");
-    if (tmp_string) {
-        sscanf(octstr_get_cstr(tmp_string),"%d", &dlr_err);
-    }
+    dlrerr = http_cgi_variable(cgivars, "dlr-err");
+
     debug("smsc.http.kannel", 0, "HTTP[%s]: Received an HTTP request",
           octstr_get_cstr(conn->id));
     
@@ -757,8 +757,7 @@ static void kannel_receive_sms(SMSCConn *conn, HTTPClient *client,
         error(0, "HTTP[%s]: Authorization failure",
               octstr_get_cstr(conn->id));
         retmsg = octstr_create("Authorization failed for sendsms");
-    }
-    else if (dlrmask != 0 && dlrmid != NULL) {
+    } else if (dlrmask != 0 && dlrmid != NULL) {
         /* we got a DLR, and we don't require additional values */
         Msg *dlrmsg;
         
@@ -775,15 +774,13 @@ static void kannel_receive_sms(SMSCConn *conn, HTTPClient *client,
             debug("smsc.http.kannel", 0, "HTTP[%s]: Received DLR for DLR-URL <%s>",
                   octstr_get_cstr(conn->id), octstr_get_cstr(dlrmsg->sms.dlr_url));
 
-            if (dlr_err > 0) {
-                /* we assume it's a GSM network type, hence 0x03 */
-                tmp_string = octstr_format("%c%c%c", 0x03, (dlr_err & 0xFF00) >> 8, dlr_err & 0xFF);
-                if (dlrmsg->sms.meta_data == NULL)
-                       dlrmsg->sms.meta_data = octstr_create("");
+            if (dlrerr != NULL) {
+                /* pass errorcode as is */
+            	if (dlrmsg->sms.meta_data == NULL)
+            		dlrmsg->sms.meta_data = octstr_create("");
 
-                meta_data_set_value(dlrmsg->sms.meta_data, "smpp", 
-                                    octstr_imm("dlr_err"), tmp_string, 1);
-                octstr_destroy(tmp_string);
+                meta_data_set_value(dlrmsg->sms.meta_data, METADATA_DLR_GROUP,
+                                    octstr_imm(METADATA_DLR_GROUP_ERRORCODE), dlrerr, 1);
             }
             
             ret = bb_smscconn_receive(conn, dlrmsg);
