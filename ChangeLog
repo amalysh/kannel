@@ -1,3 +1,15 @@
+2012-07-17 Alexander Malysh <amalysh at kannel.org>
+    * README: applied patch that corrects docs build on current debian.
+      Thanks to Martin Atukunda <matlads at gmail.com> for this patch.
+
+2012-07-04  Stipe Tolj  <stolj at kannel.org>
+    * doc/CodingStyle: fix type for --pad-oper option. NLC.
+     
+2012-06-02  Stipe Tolj  <stolj at kannel.org>
+    * gwlib/http.c: fix possible problems for HTTP/1.1 "Host" header value. We
+      need to remove the port in both cases that contain the standard port
+      values, port 80 for non-SSL and port 443 for SSL-enabled connections.
+    
 2012-05-31 Alexander Malysh <amalysh at kannel.org>
     * doc/userguide/userguide.xml: removed meta-data from smsc group because it
       is not supported there.
