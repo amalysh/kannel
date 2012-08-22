@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2010 Kannel Group  
+ * Copyright (c) 2001-2012 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -166,6 +166,7 @@ void dlr_db_fields_destroy(struct dlr_db_fields *fields);
  * if we have module API implemented.
  */
 struct dlr_storage *dlr_init_mem(Cfg *cfg);
+struct dlr_storage *dlr_init_spool(Cfg *cfg);
 struct dlr_storage *dlr_init_mysql(Cfg *cfg);
 struct dlr_storage *dlr_init_sdb(Cfg *cfg);
 struct dlr_storage *dlr_init_oracle(Cfg *cfg);

@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2010 Kannel Group  
+ * Copyright (c) 2001-2012 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -249,8 +249,13 @@ static int at2_open_device(PrivAT2data *privdata)
     tios.c_iflag |= IGNPAR; /* ignore parity */
     tios.c_iflag &= ~INPCK;
 #if defined(CRTSCTS)
-    if(privdata->modem->hardware_flow_control) {
-        tios.c_cflag |= CRTSCTS; /* enable hardware flow control */
+    if(privdata->modem) {
+        if(privdata->modem->hardware_flow_control) {
+            tios.c_cflag |= CRTSCTS; /* enable hardware flow control */
+        }
+        else {
+            tios.c_cflag &= ~CRTSCTS; /* disable hardware flow control */
+        }
     }
     else {
         tios.c_cflag &= ~CRTSCTS; /* disable hardware flow control */

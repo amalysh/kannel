@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2010 Kannel Group  
+ * Copyright (c) 2001-2012 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -122,6 +122,7 @@ SINGLE_GROUP(core,
     OCTSTR(ssl-server-key-file)
     OCTSTR(ssl-trusted-ca-file)
     OCTSTR(dlr-storage)
+    OCTSTR(dlr-spool)
     OCTSTR(maximum-queue-length)
     OCTSTR(sms-incoming-queue-limit)
     OCTSTR(sms-outgoing-queue-limit)

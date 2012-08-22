@@ -1,7 +1,7 @@
 /* ====================================================================
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2010 Kannel Group  
+ * Copyright (c) 2001-2012 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -2461,18 +2461,24 @@ void octstr_format_append(Octstr *os, const char *fmt, ...)
 }
 
 
+/*
+ * Hash implementation ala Robert Sedgewick.
+ */
 unsigned long octstr_hash_key(Octstr *ostr)
 {
-    unsigned long key = 0;
-    long i;
+    unsigned long b    = 378551;
+    unsigned long a    = 63689;
+    unsigned long hash = 0;
+    unsigned long i    = 0;
+    unsigned long len = octstr_len(ostr);
+    const char *str = octstr_get_cstr(ostr);
 
-    if (ostr == NULL)
-	return 0;
+    for(i = 0; i < len; str++, i++) {
+        hash = hash*a+(*str);
+        a = a*b;
+    }
 
-    for (i = 0; i < octstr_len(ostr); i++)
-	key = key + octstr_get_char(ostr, i);
-
-    return key;
+    return (hash & 0x7FFFFFFF);
 }
 
 
