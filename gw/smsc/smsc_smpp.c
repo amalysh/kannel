@@ -523,7 +523,7 @@ static Msg *pdu_to_msg(SMPP *smpp, SMPP_PDU *pdu, long *reason)
         case 0x00: /* default SMSC alphabet */
             /*
              * try to convert from something interesting if specified so
-             * unless it was specified binary, ie. UDH indicator was detected
+             * unless it was specified binary, i.e. UDH indicator was detected
              */
             if (smpp->alt_charset && msg->sms.coding != DC_8BIT) {
                 if (charset_convert(msg->sms.msgdata, octstr_get_cstr(smpp->alt_charset), SMPP_DEFAULT_CHARSET) != 0)
@@ -535,9 +535,11 @@ static Msg *pdu_to_msg(SMPP *smpp, SMPP_PDU *pdu, long *reason)
                 msg->sms.coding = DC_7BIT;
             }
             break;
-        case 0x01: /* ASCII or IA5 - not sure if I need to do anything */
+        case 0x01:
+        	/* ASCII/IA5 - we don't need to perform any conversion
+        	 * due that UTF-8's first range is exactly the ASCII table */
             msg->sms.coding = DC_7BIT; break;
-        case 0x03: /* ISO-8859-1 - I'll convert to unicode */
+        case 0x03: /* ISO-8859-1 - I'll convert to internal encoding */
             if (charset_convert(msg->sms.msgdata, "ISO-8859-1", SMPP_DEFAULT_CHARSET) != 0)
                 error(0, "Failed to convert msgdata from ISO-8859-1 to " SMPP_DEFAULT_CHARSET ", will leave as is");
             msg->sms.coding = DC_7BIT; break;
@@ -546,11 +548,11 @@ static Msg *pdu_to_msg(SMPP *smpp, SMPP_PDU *pdu, long *reason)
             msg->sms.coding = DC_8BIT; break;
         case 0x05: /* JIS - what do I do with that ? */
             break;
-        case 0x06: /* Cyrllic - iso-8859-5, I'll convert to unicode */
+        case 0x06: /* Cyrllic - iso-8859-5, I'll convert to internal encoding */
             if (charset_convert(msg->sms.msgdata, "ISO-8859-5", SMPP_DEFAULT_CHARSET) != 0)
                 error(0, "Failed to convert msgdata from cyrllic to " SMPP_DEFAULT_CHARSET ", will leave as is");
             msg->sms.coding = DC_7BIT; break;
-        case 0x07: /* Hebrew iso-8859-8, I'll convert to unicode */
+        case 0x07: /* Hebrew iso-8859-8, I'll convert to internal encoding */
             if (charset_convert(msg->sms.msgdata, "ISO-8859-8", SMPP_DEFAULT_CHARSET) != 0)
                 error(0, "Failed to convert msgdata from hebrew to " SMPP_DEFAULT_CHARSET ", will leave as is");
             msg->sms.coding = DC_7BIT; break;
