@@ -25,8 +25,8 @@
 			<jobtitle>Chairman &amp; CTO</jobtitle>
 			<orgname>Global Networks Inc.</orgname>
 			<address> <email>andreas@fink.org</email>
-				<otheraddr>http://www.smsrelay.com</otheraddr>
-				<otheraddr>http://www.gni.ch</otheraddr>
+				<otheraddr>http://www.smsrelay.com/</otheraddr>
+				<otheraddr>http://www.gni.ch/</otheraddr>
 			</address>
 		</affiliation>
 	</author>
@@ -48,7 +48,7 @@
 			<orgname>Tolj System Architecture</orgname>
 			<address> 
 				<email>stolj@kannel.org</email>
-				<otheraddr>http://www.kannel.org</otheraddr>
+				<otheraddr>http://www.tolj.org/</otheraddr>
 			</address>
 		</affiliation>
 	</author>
@@ -60,7 +60,7 @@
 			<orgname>Global Networks Inc.</orgname>
 			<address> 
 				<email>as@gni.ch</email>
-				<otheraddr>http://www.gni.ch</otheraddr>
+				<otheraddr>http://www.gni.ch/</otheraddr>
 			</address>
 		</affiliation>
 	</author>
@@ -72,10 +72,22 @@
 			<orgname>GTX Ltd.</orgname>
 			<address> 
 				<email>amalysh at kannel.org</email>
-				<otheraddr>http://www.gtx-messaging.com</otheraddr>
+				<otheraddr>http://www.gtx-messaging.com/</otheraddr>
 			</address>
 		</affiliation>
 	</author>
+    <author>
+        <firstname>Alejandro</firstname>
+        <surname>Guerrieri</surname>
+        <affiliation>
+            <jobtitle>Senior System Architect</jobtitle>
+            <orgname>3Cinteractive, L.L.C.</orgname>
+            <address> 
+                <email>aguerrieri@kannel.org</email>
+                <otheraddr>http://www.3cinteractive.com/</otheraddr>
+            </address>
+        </affiliation>
+    </author>
 	<author>
 		<firstname>Lars</firstname>
 		<surname>Wirzenius</surname>
@@ -2898,6 +2910,15 @@ secret-nas = radius
         </entry>   
      </row>
 
+     <row><entry><literal>dead-start</literal></entry>
+        <entry><literal>boolean</literal></entry>
+        <entry valign="bottom">
+        Optional, defines if the SMSC connection type is started in disconnected mode (dead).
+        This allows SMSC to be connected at a later time with the add-smsc HTTP administration command. 
+        If set to 'true' the connection will start as 'dead' and will require a start-smsc command 
+        to activate it. Defaults to 'false' if not present.</entry>
+     </row>
+
   </tbody>
   </tgroup>
  </table>
@@ -3286,10 +3307,10 @@ smsc-password = bar
 </sect2>
 
 <sect2>
-<title>SMPP 3.4</title>
+<title>SMPP 3.3, 3.4 and 5.0</title>
 
    <para>This implements Short Message Peer to Peer (SMPP) Protocol
-   3.4 in a manner that should also be compatible with 3.3. Sample
+   5.0, with most used support for 3.4 and full support for 3.3. Sample
    configuration:</para>
 
 <programlisting>
@@ -3346,8 +3367,8 @@ address-range = ""
        Attempt to use a TRANSCEIVER mode connection
        to the SM-SC. It uses the standard transmit 'port',
        there is no need to set 'receive-port'.
-       This is a SMPP 3.4 only feature and will not work
-       on an earlier SM-SC.
+       This is a SMPP 3.4 and 5.0 feature and will not work
+       on an earlier SM-SC using SMPP 3.3.
        This will try a bind_transceiver only and will not attempt
        to fall back to doing transmit and receive on the same connection.
       </entry></row>
@@ -3385,8 +3406,10 @@ address-range = ""
    <row><entry><literal>system-type (m)</literal></entry>
      <entry><literal>string</literal></entry>
      <entry valign="bottom">
-       Usually you can get away with "VMA" which stands for
-       Voice Mail Activation.
+       Optional; used to categorize the type of ESME that is binding 
+       to the SMSC. Examples include "VMS" (voice mail system) and "OTA" 
+       (over-the-air activation system). If not set, defaults to 
+       "VMA" (voice mail alerting).
      </entry></row>
 
    <row><entry><literal>service-type</literal></entry>
@@ -3397,16 +3420,22 @@ address-range = ""
        influence SMS routing (for example). The SMSC operator may
        also refer to this as the "profile ID". The maximum length of the
        service type is 6, according to the SMPP specification v3.4.
+       Defined values are: "CMT" (cellular messaging), "CPT" (cellular
+       paging), "VMN" (voice mail notification), "VMA" (voice mail
+       alerting), "WAP" (wireless application protocol), "USSD"
+       (unstructured supplementary services data), "CBS" (cell broadcast
+       service) and "GUTS" (generic UDP transport service). Other values
+       may be defined mutually between the SMSC and the ESME application.
      </entry></row>
 
    <row><entry><literal>interface-version</literal></entry>
      <entry><literal>number</literal></entry>
      <entry valign="bottom">
        Change the "interface version" parameter sent from Kannel to
-       a value other then 0x34 (for SMPP v3.4). the value entered here
+       a value other then 0x34 (for SMPP v3.4). The value entered here
        should be the hexadecimal representation of the interface version
-       parameter. for example, the default (if not set) is "34" which stands
-       for 0x34. for SMPP v3.3 set to "33".
+       parameter. For example, the default (if not set) is "34" which stands
+       for 0x34. For SMPP v3.3 set to "33". For SMPP v5.0 set to "50".
      </entry></row>
 
    <row><entry><literal>address-range (m)</literal></entry>
@@ -4246,6 +4275,102 @@ sim-buffering = true          This will tell kannel to search for messages in
      </orderedlist>
      </para>
    </sect3>
+</sect2>
+
+
+<sect2>
+<title>GSMA OneAPI v1.0 ParlayX SMS SOAP</title>
+
+   <para>This implements the GSMA OneAPI v1.0 ParlayX SMS SOAP/XML interface
+   in two flavors, the Ericsson SDP (service delivery platform) ParlayX and
+   the GSMA OneAPI v1.0 SOAP interfaces.</para>
+
+  <para>Example configuration for the Ericsson SDP variant:</para>
+
+<programlisting>
+group = smsc
+smsc = parlayx
+system-type = ericsson-sdp
+port = 10000
+connect-allow-ip = 10.11.12.13
+send-url = http://host/location
+dlr-url = http://our-host:10000/dlr-location
+smsc-username = tester
+smsc-password = foobar
+</programlisting>
+
+ <informaltable frame="none">
+  <tgroup cols="3"><thead><row>
+     <entry>Variable</entry>
+     <entry>Value</entry>
+     <entry>Description</entry>
+   </row></thead><tbody>
+
+   <row><entry><literal>system-type (m)</literal></entry>
+     <entry><literal>string</literal></entry>
+     <entry valign="bottom">
+        Type of ParlayX connection. Currently supported are: 
+        'oneapi-v1', 'ericsson-sdp'. 
+        The variants have the same ParlayX SOAP XML PDUs, but differ in the
+        authentication scheme they use, where 'ericsson-sdp' uses WS-Security 
+        via wsse and 'oneapi-v1' uses plain HTTP basic authentication.
+     </entry></row>
+
+   <row><entry><literal>port (m)</literal></entry>
+     <entry><literal>port-number</literal></entry>
+     <entry valign="bottom">
+       Port number in which Kannel listens to (MO and DLR) messages 
+       from other SOAP service side.
+     </entry></row>
+
+   <row><entry><literal>send-url (m)</literal></entry>
+     <entry><literal>url</literal></entry>
+     <entry valign="bottom">
+       Location of the SOAP service to send MT messages.
+     </entry></row>
+
+   <row><entry><literal>dlr-url (m)</literal></entry>
+     <entry><literal>url</literal></entry>
+     <entry valign="bottom">
+       Location of our side SOAP service for DLR notifications.
+     </entry></row>
+
+   <row><entry><literal>smsc-username (m)</literal></entry>
+     <entry><literal>string</literal></entry>
+     <entry valign="bottom">
+       Username associated for the SOAP service connection.
+     </entry></row>
+
+   <row><entry><literal>smsc-password (m)</literal></entry>
+     <entry><literal>string</literal></entry>
+     <entry valign="bottom">
+       Password associated for the SOAP service username.
+     </entry></row>
+
+   <row><entry><literal>use-ssl</literal></entry>
+   <entry><literal>boolean</literal></entry>
+   <entry valign="bottom">
+      Defines whether listen port should use SSL.
+   </entry></row>
+
+   <row><entry><literal>connect-allow-ip</literal></entry>
+     <entry><literal>IP-list</literal></entry>
+     <entry valign="bottom">
+       IPs allowed to use this SOAP service interface. If not set, 
+       "127.0.0.1" (localhost) is the only host allowed to connect.
+       Typically you will allow the IP of the other side SOAP service
+       here.
+     </entry></row>
+
+   <row><entry><literal>window</literal></entry>
+   <entry><literal>boolean</literal></entry>
+   <entry valign="bottom">
+      Number of concurrent sending threads. If not set,
+      one thread is used.
+   </entry></row>
+
+   </tbody></tgroup></informaltable>
+
 </sect2>
 
 

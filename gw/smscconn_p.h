@@ -205,6 +205,7 @@ struct smscconn {
     Dict *reroute_by_receiver;  /* reroute receiver numbers to specific smsc-ids */
     Octstr *reroute_to_smsc;    /* define a smsc-id to reroute to */
     int reroute_dlr;            /* should DLR's are rereouted too? */
+    int dead_start;             /* don't connect this SMSC at startup time */
 
     long max_sms_octets; /* max allowed octets for this SMSC */
 
@@ -294,6 +295,11 @@ int smsc_oisd_create(SMSCConn *conn, CfgGroup *cfg);
 
 /* Responsible file: smsc/smsc_loopback.c */
 int smsc_loopback_create(SMSCConn *conn, CfgGroup *cfg);
+
+#ifdef HAVE_GSOAP
+/* Responsible file: smsc/smsc_soap_parlayx.c */
+int smsc_soap_parlayx_create(SMSCConn *conn, CfgGroup *cfg);
+#endif
 
 /* ADD NEW CREATE FUNCTIONS HERE
  *

@@ -1,3 +1,72 @@
+2012-10-14  Stipe Tolj  <stolj at kannel.org>
+    * doc/userguide/userguide.xml: document that we can use SMPP v5.0 
+      bind connections too now.
+    * gw/smsc/smpp_pdu_opt.def: add the TLVs added in SMPP v5.0.
+    * gw/smsc/smpp_pdu.def: add optional TLVs to the the SMPP v3.[3|4] PDUs
+      and some new PDUs as defined in SMPP v5.0.
+    * gw/smpp_pdu.h: added a couple of NPI values defined in SMPP v5.0.
+    * gw/smsc_smpp.c: add basic support for SMPP v5.0 handling.
+    This patchset incorporates the new parts from the SMPP v5.0 spec into
+    the codebase, without being intrusive to the current default behaviour.
+    
+2012-10-14  Stipe Tolj  <stolj at kannel.org>
+    * gwlib/http.[ch]: add function http_request_url() to gain access to
+      the used URL of the transaction, i.e. this will be required for HTTP 
+      RESTful implementations of OneAPI v2.0 in the SMSC HTTP module for 
+      the receiving function callback to distinguish MO and DLRs.
+      
+2012-10-12  Stipe Tolj  <stolj at kannel.org>
+    * doc/userguide.xml: adding documentation part for new SMSC type 'GSMA 
+      OneAPI v1.0 ParlayX SMS SOAP'.
+    * gw/smscconn_p.h, gw/smscconn.c: add new SMSC type create function
+      smsc_soap_parlayx_create(), depending on gSOAP support.
+    * gw/smsc/smsc_soap_parlayx.c: implement two variants of 'smsc = parlayx',
+      for the Ericsson SDP 'system-type = ericsson-sdp' and the GSMA OneAPI
+      v1.0 'system-type = oneapi-v1', both based on ParlayX 2.1 SOAP service.
+    * soap/Makefile.in: generic Makefile for SOAP services implemented via
+      gSOAP created C headers and sources.
+    * soap/service/parlayx/parlayx_sms_send_service_2_1_wrapper.h: wrapper
+      for the gSOAP wsdl2h created header file, to include WS-Security via
+      wsse imports.
+    * soap/service/parlayx/typemap.dat: namespace mapping file for the service.
+    * soap/service/parlayx/wsdl/*.[wsdl|xsd]: web service description language
+      and extensible schema description files for this service.
+    * configure[.in]: implement --with-gsoap[=DIR] to allow adding gSOAP 
+      support for SOAP based services, i.e. for the ParlayX SMSC type.
+    * gw-config.h.in: add define HAVE_GSOAP.
+    * Makefile.in: set include marker for the soap/Makefile[.in] spin-off
+      Makefile dedicated to the whole SOAP building framework.
+    This patchset adds generic gSOAP support for building SOAP based SMS
+    services into Kannel. As the first implementation, we provide ParlayX 2.1
+    with the variants of the Ericsson SDP and the GSMA OneAPI v1.0. More
+    SOAP based services can be implemented easily now.
+    
+2012-10-08  Stipe Tolj  <stolj at kannel.org>
+    * doc/userguide.xml: adding documentation part for new config directive
+      'dead-start' being a global config directive for the 'group = smsc' 
+      scope.
+    * gw/bb_smscconn.c: use the dead_start flag in the connection struct to
+      determine if we're connecting a SMSC or leave it in 'dead' mode.
+    * gw/bearerbox.[ch]: changed prototype for smsc2_resume() to indicate a
+      flag if it was/should be inited.
+    * gw/smscconn_p.h: add dead_start flag to smscconn.
+    * gw/smscconn.c: read the SMSC type generic 'dead-start' boolean config
+      directive to determine if we are starting this SMSC connection type in
+      a disconnected mode (dead).
+    This patchset was originally provided by Alejandro Guerrieri.
+    [Msg-Id: <DB023A11-9563-4F0B-A4CB-39A8E86DEE7B@kannel.org>]
+    Thanks to Alejandro for the patchset, and Juan Nin for raising the topic.
+      
+2012-10-01  Stipe Tolj  <stolj at kannel.org>
+    * gw/wap_push_pap_[compiler|mime].c: process the 'X-Wap-Application-Id'
+      within the HTTP header of the payload content part of the multi-part
+      MIME type, and NOT inside the meta-level HTTP headers.
+    * test/test_pgg.c: ensure we inject the 'X-Wap-Application-Id' header
+      to the correct section of the payload multi-part MIME type content.
+    This patchset fixes bug #551 and has been confirmed in production.
+    Thanks a lot to Nikolay Khrustalev and Rafael Aquino for reporting and
+    providing analysis data to resolve the bug.
+
 2012-09-26 Alexander Malysh <amalysh at kannel.org>
     * test/fakesmsc.c: segmentation fault when the program reaches EOF.
       Thanks to Rudy Matela <rudy at matela.com.br> for this patch.
