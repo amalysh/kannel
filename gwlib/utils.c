@@ -98,6 +98,10 @@
 #include <mysql_version.h>
 #include <mysql.h>
 #endif
+#ifdef HAVE_PGSQL 
+#include <libpq-fe.h>
+#include <pg_config.h>
+#endif
 #ifdef HAVE_SQLITE 
 #include <sqlite.h>
 #endif
@@ -437,7 +441,7 @@ static int change_user(const char *user)
     }
 
 #ifdef HAVE_INITGROUPS
-    if (initgroups(user, -1) == -1) {
+    if (initgroups(user, pass->pw_gid) == -1) {
         error(errno, "Could not set supplementary group ID's.");
     }
 #endif
@@ -546,6 +550,9 @@ Octstr *version_report_string(const char *boxname)
 #ifdef HAVE_MYSQL
              "Compiled with MySQL %s, using MySQL %s.\n"
 #endif
+#ifdef HAVE_PGSQL
+             "Compiled with PostgreSQL %s.\n"
+#endif
 #ifdef HAVE_SDB
              "Using LibSDB %s.\n"
 #endif
@@ -576,6 +583,9 @@ Octstr *version_report_string(const char *boxname)
 #endif
 #ifdef HAVE_MYSQL
              MYSQL_SERVER_VERSION, mysql_get_client_info(),
+#endif
+#ifdef HAVE_PGSQL
+             PG_VERSION,
 #endif
 #ifdef HAVE_SDB
              LIBSDB_VERSION,
