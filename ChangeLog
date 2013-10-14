@@ -1,3 +1,44 @@
+2013-10-14 Alexander Malysh <amalysh at kannel.org>
+    * gwlib/log.c: applied patch to reduce CPU load by logging.
+      Thanks to Jacek Raczkiewicz <jacek.raczkiewicz at gmail.com> for this patch.
+
+2013-10-02  Stipe Tolj  <stolj at kannel.org>
+    * configure[.in]: add the /usr/local/share/gsoap default target in the
+      gsoap detection.
+      
+2013-10-02  Stipe Tolj  <stolj at kannel.org>
+    * configure[.in]: use grep -e rather then grep -P in the gsoap version
+      pattern matching. The perl compatible grep may not be build in in various
+      distribution.
+    * soap/Makefile.in: use GSOAP_IMPORT include directory rather then using
+      the system default location.
+      
+2013-09-26  Stipe Tolj  <stolj at kannel.org>
+    * configure[.in]: add detecting openssl library path on more recent Debian
+      based distributions, including Debian 7 and Ubuntu 13. They don't have
+      symlinks for the libssl.so libcrypo.so in the standard directories, but
+      rather use the machine specific path of the gcc library path. This will
+      allow to detect the path and hence ensure openssl enabled builds are
+      working out of the box on vanilla systems.
+      
+2013-09-26  Stipe Tolj  <stolj at kannel.org>
+    * gwlib/utils.c: fix build breaking if our own configure didn't detect
+      openssl. PostgreSQL's <pg_config.h> always defines it, and hence we run 
+      into build errors. Using a simple preprocessor trick to reset the #define
+      again if we know we didn't detected it on our own. NLC.
+       
+2013-09-16  Stipe Tolj  <stolj at kannel.org>
+    * gw/bearerbox.c: remove PANIC within dispatch_into_queue() if the sms_type
+      is not handled. This ensures we don't run into infinite PANIC loops in
+      case any message is injected in the storage subsystem with strange values.
+      The message itself isn't removed from the store.
+      
+2013-09-16  Stipe Tolj  <stolj at kannel.org>
+    * gw/smsc/smsc_smpp.c: fix PANIC conditions within octstr_check_range() if
+      the SMSC provides a positive ACK via command_status = 0x00, but doesn't
+      provide any message_id. We'll consider the MT still as successfull, but
+      warn the user via an error() entry log.
+      
 2013-08-23 Alexander Malysh <amalysh at kannel.org>
     * aclocal.m4, configure, configure.in, gw-config.h.in, gwlib/dbpool_oracle.c:
       added OCIPing to check oracle connection.
