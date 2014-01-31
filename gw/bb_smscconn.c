@@ -354,20 +354,28 @@ void bb_smscconn_send_failed(SMSCConn *conn, Msg *sms, int reason, Octstr *reply
         break;
 
     default:
-	/* write NACK to store file */
+        /* write NACK to store file */
         store_save_ack(sms, ack_failed);
 
         if (conn) counter_increase(conn->failed);
-        if (reason == SMSCCONN_FAILED_DISCARDED)
+        if (reason == SMSCCONN_FAILED_DISCARDED) {
             if (sms->sms.sms_type != report_mt)
                 bb_alog_sms(conn, sms, "DISCARDED SMS");
             else
                 bb_alog_sms(conn, sms, "DISCARDED DLR");
-        else
+        }
+        else if (reason == SMSCCONN_FAILED_EXPIRED) {
+            if (sms->sms.sms_type != report_mt)
+                bb_alog_sms(conn, sms, "EXPIRED SMS");
+            else
+                bb_alog_sms(conn, sms, "EXPIRED DLR");
+        }
+        else {
             if (sms->sms.sms_type != report_mt)
                 bb_alog_sms(conn, sms, "FAILED Send SMS");
             else
                 bb_alog_sms(conn, sms, "FAILED Send DLR");
+        }
 
         /* generate relay confirmancy message */
         if (DLR_IS_SMSC_FAIL(sms->sms.dlr_mask) ||
@@ -639,13 +647,20 @@ static void sms_router(void *arg)
         case SMSCCONN_QUEUED:
             debug("bb.sms", 0, "Routing failed, re-queued.");
             break;
-	case SMSCCONN_FAILED_DISCARDED:
+        case SMSCCONN_FAILED_DISCARDED:
             msg_destroy(msg);
             newmsg = startmsg = NULL;
             break;
         case SMSCCONN_FAILED_QFULL:
             debug("bb.sms", 0, "Routing failed, re-queuing.");
             gwlist_produce(outgoing_sms, msg);
+            break;
+        case SMSCCONN_FAILED_EXPIRED:
+            debug("bb.sms", 0, "Routing failed, expired.");
+            msg_destroy(msg);
+            newmsg = startmsg = NULL;
+            break;
+        default:
             break;
         }
     }
@@ -1316,6 +1331,12 @@ long smsc2_rout(Msg *msg, int resend)
     if (msg_type(msg) != sms) {
         error(0, "Attempt to route non SMS message through smsc2_rout!");
         return SMSCCONN_FAILED_DISCARDED;
+    }
+
+    /* check if validity period has expired */
+    if (msg->sms.validity != SMS_PARAM_UNDEFINED && time(NULL) > msg->sms.validity) {
+        bb_smscconn_send_failed(NULL, msg_duplicate(msg), SMSCCONN_FAILED_EXPIRED, octstr_create("validity expired"));
+        return SMSCCONN_FAILED_EXPIRED;
     }
 
     /* unify prefix of receiver, in case of it has not been

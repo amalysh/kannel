@@ -1,3 +1,98 @@
+2014-01-08 Alexander Malysh <amalysh at kannel.org>
+    * doc/userguide/userguide.xml: fixed compilation error.
+
+2014-01-06  Stipe Tolj  <stolj at kannel.org>
+    * gw/smsbox.c: fix HTTP retry starvation in a sequential retry with
+      in loop sleep time. This causes MOs that can't be delivered to the 
+      HTTP application layer to be held in the retry queue for too long.
+      Now we use the timer abstracted data type to trigger the retry call
+      asynchronously for every MO message event.
+      
+2014-01-06  Stipe Tolj  <stolj at kannel.org>
+    * gwlib/gw-timer.[ch]: abstracting the wap/timers.[ch] module, making
+      it independent from the WAP parts, and useable for any delay object
+      handling.
+      
+2014-01-06  Stipe Tolj  <stolj at kannel.org>
+    * doc/userguide/userguide.xml: document escape code %# used to 
+      escape in values from the meta-data parts.
+    * gw/urltrans.c: implement escape code %# used for meta-data values.
+    Thanks to Alejandro Guerrieri for the patchset.
+    
+2014-01-06  Stipe Tolj  <stolj at kannel.org>
+    * doc/userguide/userguide.xml: document HTTP admin URI /remove-message
+    * gw/bb_http.c, gw/bearerbox.[ch]: implement HTTP admin URI command
+      /remove_message.
+    Thanks to Alejandro Guerrieri for the patchset.
+    
+2014-01-06  Stipe Tolj  <stolj at kannel.org>
+    * configure[.in]: implement --with-redis option to support Redis.
+    * gw-config.h.in: add HAVE_REDIS macro definition.
+    * doc/examples/dlr-redis.conf: Redis config example.
+    * doc/userguide/userguide.xml: adding Redis support documentation.
+    * gw/dlr_p.h: extending the dlr_entry struct to hold information if
+      we used the destination address in the lookup process, also adds
+      the TTL variable to dlr_db_fields struct.
+    * gw/dlr_redis.c: implements Redis support as DLR storage backend.
+    * gw/dlr.[ch]: add 'ttl' config handling and extend dlr_add() prototype
+      to allow passing the optional argument for indicating the usage of
+      the destination address.
+    * gw/smsc/smsc_[cimd2|emi].c: add use destination address flag in
+      dlr_add() call. This is required since these two SMSC types don't
+      have a message ID returned by the SMSC.
+    * gwlib/cfg.def: adding config 'group = redis-connection' context, and
+      adding the 'ttl' directive for 'group = dlr-db' context.
+    * gwlib/dbpool_redis.c: implements Redis support for the database pool
+      abstraction layer.
+    * gwlib/dbpool.[ch]: adding Redis support to internal structures.
+    * gwlib/octstr.[ch]: adding function octstr_replace_first().
+    * gwlib/utils.c: add Redis version output in version_report_string(). 
+    This patchset was originally developed by Toby Phipps. 
+    [Msg-Id: <C2EAA670-344D-4C9A-ACFB-01A3E536DB47@nexmedia.com.sg>]
+    [URL: https://github.com/tphipps/kannel-redis]
+    Thanks to Toby Phipps for the patchset, and Alejandro and Juan Nin 
+    for raising the topic again.
+     
+2014-01-02  Stipe Tolj  <stolj at kannel.org>
+    * gw/bb_[boxc|smscconn].c, gw/bb_smscconn_cb.h: renamed enum value 
+      SMSCCONN_FAILED_TIMEOUT to _EXPIRED and also the access-log value to 
+      'EXPIRED SMS' in order to  make the meaning more clear, thanks Alex.
+      
+2013-12-28  Stipe Tolj  <stolj at kannel.org>
+    * gw/bb_[boxc|smscconn].c: handle new SMSCCONN_FAILED_TIMEOUT case as 
+      return value of smsc2_rout(), which now checks internally if the message
+      is still valid according to the validity timestamp. If not, i.e. since
+      there was a continues looping in sms_router() since no SMSC was available
+      for a particular time, it makes no sense to shift the message to the SMSC
+      since the validity has expired. In that case semantically it is cleaner
+      to DISCARD the message in the bearerbox scope directly, and avoid sending
+      the message to the upstream SMSC with a logically expired validity.
+    * gw/bb_smscconn_cb.h: add SMSCCONN_FAILED_TIMEOUT enum value to indicate
+      that the validity time fo the message expired while trying to route it.
+        
+2013-12-17 Alexander Malysh <amalysh at kannel.org>
+    * wmlscript/wsgram.y, wmlscript/wsint.h: fixed compilation error
+
+2013-12-10  Stipe Tolj  <stolj at kannel.org>
+    * gw/smsbox.c: fix valgrind reported memory leak, when handling a failing
+      DLR HTTP call in url_result_thread().
+      
+2013-12-10  Stipe Tolj  <stolj at kannel.org>
+    * */*: cleaning up the code by removing gcc warning occurances of 
+      [-Wunused-but-set-variable]. NLC.
+    
+2013-12-02  Stipe Tolj  <stolj at kannel.org>
+    * gw/smsbox.c: add SIGTERM handling in smsbox, otherwise the process will
+      be cleanly killed, but we don't have a chance to do post-processing for
+      the shutdown phase, i.e. removing pid file.
+      
+2013-11-29 Alexander Malysh <amalysh at kannel.org>
+    * gwlib/socket.c: use POSIX function to convert to address to IP
+
+2013-11-06 Vincent CHAVANIS <v.chavanis at telemaque.fr>
+    * gw/smsc/smsc_smpp.c, gwlib/cfg.def: added support to specify our port
+      when connecting an SMPP SMSC.
+
 2013-10-17  Stipe Tolj  <stolj at kannel.org>
     * gw/smsc/smsc_soap_parlayx.c: changing namespace to use parlayx prefix
       in order to allow multi-service implementation in a single binary.

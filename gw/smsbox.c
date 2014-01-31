@@ -71,6 +71,7 @@
 
 #include "gwlib/gwlib.h"
 #include "gwlib/regex.h"
+#include "gwlib/gw-timer.h"
 
 #include "msg.h"
 #include "sms.h"
@@ -100,6 +101,12 @@
 #define HTTP_MAX_RETRIES    0
 #define HTTP_RETRY_DELAY    10 /* in sec. */
 #define HTTP_MAX_PENDING    512 /* max requests handled in parallel */
+
+/* Timer item structure for HTTP retrying */
+typedef struct TimerItem {
+    Timer *timer;
+    void *id;
+} TimerItem;
 
 /* have we received restart cmd from bearerbox? */
 volatile sig_atomic_t restart = 0;
@@ -135,6 +142,9 @@ static Octstr *ppg_service_name = NULL;
 
 static List *smsbox_requests = NULL;      /* the inbound request queue */
 static List *smsbox_http_requests = NULL; /* the outbound HTTP request queue */
+
+/* Timerset for the HTTP retry mechanism. */
+static Timerset *timerset = NULL;
 
 /* Maximum requests that we handle in parallel */
 static Semaphore *max_pending_requests;
@@ -991,15 +1001,13 @@ static void http_queue_thread(void *arg)
     Octstr *req_body;
     unsigned long retries;
     int method;
+    TimerItem *i;
 
-    while ((id = gwlist_consume(smsbox_http_requests)) != NULL) {
+    while ((i = gwlist_consume(smsbox_http_requests)) != NULL) {
         /*
-         * Sleep for a while in order not to block other operting requests.
-         * Defaults to 10 sec. if not given via http-queue-delay directive in
-         * smsbox group.
+         * The timer thread has injected the item to retry the
+         * HTTP call again now.
          */
-        if (http_queue_delay > 0)
-            gwthread_sleep(http_queue_delay);
 
         debug("sms.http",0,"HTTP: Queue contains %ld outstanding requests",
               gwlist_len(smsbox_http_requests));
@@ -1008,7 +1016,10 @@ static void http_queue_thread(void *arg)
          * Get all required HTTP request data from the queue and reconstruct
          * the id pointer for later lookup in url_result_thread.
          */
-        get_receiver(id, &msg, &trans, &method, &req_url, &req_headers, &req_body, &retries);
+        get_receiver(i->id, &msg, &trans, &method, &req_url, &req_headers, &req_body, &retries);
+
+        gw_timer_elapsed_destroy(i->timer);
+        gw_free(i);
 
         if (retries < max_http_retries) {
             id = remember_receiver(msg, trans, method, req_url, req_headers, req_body, ++retries);
@@ -1043,6 +1054,7 @@ static void url_result_thread(void *arg)
     Octstr *octet_stream;
     unsigned long retries;
     unsigned int queued; /* indicate if processes reply is re-queued */
+    TimerItem *item;
 
     Octstr *reply_body, *charset, *alt_charset;
     Octstr *udh, *from, *to, *dlr_url, *account, *smsc, *binfo, *meta_data;
@@ -1144,8 +1156,11 @@ static void url_result_thread(void *arg)
             }
             octstr_destroy(type);
         } else if (max_http_retries > retries) {
-            id = remember_receiver(msg, trans, method, req_url, req_headers, req_body, retries);
-            gwlist_produce(smsbox_http_requests, id);
+            item = gw_malloc(sizeof(TimerItem));
+            item->timer = gw_timer_create(timerset, smsbox_http_requests);
+            item->id = remember_receiver(msg, trans, method, req_url,
+                                         req_headers, req_body, retries);
+            gw_timer_elapsed_start(item->timer, http_queue_delay, item);
             queued++;
             goto requeued;
         } else
@@ -1167,6 +1182,8 @@ static void url_result_thread(void *arg)
                  (msg->sms.msgdata != NULL) ? octstr_get_cstr(msg->sms.msgdata) : "",
                  octstr_get_cstr(final_url), status,
                  (status == HTTP_OK) ? "<< successful >>" : octstr_get_cstr(reply_body));
+        } else {
+            octstr_destroy(replytext);
         }
 
 requeued:
@@ -1635,7 +1652,6 @@ static void obey_request_thread(void *arg)
 
     	/* Recode to UTF-8 the MO message if possible */
     	if (mo_recode && msg->sms.coding == DC_UCS2) {
-    		int converted = 0;
     	    Octstr *text;
 
     	    text = octstr_duplicate(msg->sms.msgdata);
@@ -1645,7 +1661,6 @@ static void obey_request_thread(void *arg)
                 msg->sms.msgdata = octstr_duplicate(text);
                 msg->sms.charset = octstr_create("UTF-8");
                 msg->sms.coding = DC_7BIT;
-                converted = 1;
     	    }
     	    octstr_destroy(text);
     	}
@@ -1945,7 +1960,6 @@ static Octstr *smsbox_req_handle(URLTranslation *t, Octstr *client_ip,
     List *allowed = NULL;
     List *denied = NULL;
     int no_recv, ret = 0, i;
-    long del;
 
     /*
      * Multi-cast messages with several receivers in 'to' are handled
@@ -2079,7 +2093,7 @@ static Octstr *smsbox_req_handle(URLTranslation *t, Octstr *client_ip,
      */
     for (i = 0; i < gwlist_len(denied); i++) {
         receiv = gwlist_get(denied, i);
-        del = gwlist_delete_matching(allowed, receiv, octstr_item_match);
+        gwlist_delete_matching(allowed, receiv, octstr_item_match);
     }
 
     /* have all receivers been denied by list rules?! */
@@ -2682,20 +2696,14 @@ error:
 static Octstr *smsbox_xmlrpc_post(List *headers, Octstr *body,
                                   Octstr *client_ip, int *status)
 {
-    Octstr *ret, *type, *user, *pass;
-    Octstr *from, *to, *udh, *smsc, *charset, *dlr_url, *account, *binfo, *meta_data;
+    Octstr *ret, *type;
+    Octstr *charset;
     Octstr *output;
     Octstr *method_name;
     XMLRPCDocument *msg;
 
-    int	dlr_mask, mclass, mwi, coding, compress, validity, 
-	deferred, pid, alt_dcs, rpi;
-
-    from = to = udh = smsc = account = dlr_url = charset = binfo = meta_data = NULL;
-    mclass = mwi = coding = compress = validity = deferred = dlr_mask = 
-        pid = alt_dcs = rpi = -1;
- 
-    user = pass = ret = NULL;
+    charset = NULL;
+    ret = NULL;
 
     /*
      * check if the content type is valid for this request
@@ -3228,7 +3236,7 @@ static void signal_handler(int signum) {
 
     switch (signum) {
         case SIGINT:
-
+        case SIGTERM:
        	    if (program_status != shutting_down) {
                 error(0, "SIGINT received, aborting program...");
                 program_status = shutting_down;
@@ -3260,6 +3268,7 @@ static void setup_signal_handlers(void) {
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
     sigaction(SIGINT, &act, NULL);
+    sigaction(SIGTERM, &act, NULL);
     sigaction(SIGQUIT, &act, NULL);
     sigaction(SIGHUP, &act, NULL);
     sigaction(SIGPIPE, &act, NULL);
@@ -3575,6 +3584,7 @@ int main(int argc, char **argv)
     caller = http_caller_create();
     smsbox_requests = gwlist_create();
     smsbox_http_requests = gwlist_create();
+    timerset = gw_timerset_create();
     gwlist_add_producer(smsbox_requests);
     gwlist_add_producer(smsbox_http_requests);
     num_outstanding_requests = counter_create();
@@ -3614,6 +3624,7 @@ int main(int argc, char **argv)
     gwlist_destroy(smsbox_requests, NULL);
     gwlist_destroy(smsbox_http_requests, NULL);
     http_caller_destroy(caller);
+    gw_timerset_destroy(timerset);
     counter_destroy(num_outstanding_requests);
     counter_destroy(catenated_sms_counter);
     octstr_destroy(bb_host);
