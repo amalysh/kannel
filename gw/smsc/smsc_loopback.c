@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2013 Kannel Group  
+ * Copyright (c) 2001-2014 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -88,7 +88,7 @@ static int msg_cb(SMSCConn *conn, Msg *msg)
         uuid_unparse(sms->sms.id, id);
         mid = octstr_create(id);
 
-        dlr_add(conn->id, mid, sms);
+        dlr_add(conn->id, mid, sms, 0);
         
         octstr_destroy(mid);
     }

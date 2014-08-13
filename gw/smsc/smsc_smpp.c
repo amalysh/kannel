@@ -1,7 +1,7 @@
 /* ====================================================================
  * The Kannel Software License, Version 1.0
  *
- * Copyright (c) 2001-2013 Kannel Group
+ * Copyright (c) 2001-2014 Kannel Group
  * Copyright (c) 1998-2001 WapIT Ltd.
  * All rights reserved.
  *
@@ -116,6 +116,7 @@
 #define SMPP_DEFAULT_CONNECTION_TIMEOUT  10 * SMPP_ENQUIRE_LINK_INTERVAL
 #define SMPP_DEFAULT_WAITACK        60
 #define SMPP_DEFAULT_SHUTDOWN_TIMEOUT 30
+#define SMPP_DEFAULT_PORT           2775
 
 
 /*
@@ -1595,7 +1596,7 @@ static long smscconn_failure_reason_to_smpp_status(long reason)
 
 
 static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
-                       long *pending_submits)
+                      long *pending_submits)
 {
     SMPP_PDU *resp = NULL;
     Octstr *os;
@@ -1604,8 +1605,24 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
     long reason, cmd_stat;
     int ret = 0;
 
+    /*
+     * In order to keep the protocol implementation logically clean,
+     * we will obey the required SMPP session state while processing
+     * the PDUs, see Table 2-1, SMPP v3.4 spec, section 2.3, page 17.
+     * Therefore we will interpret our abstracted smpp->conn->status
+     * value as SMPP session state here.
+     */
     switch (pdu->type) {
         case data_sm:
+            /*
+             * Session state check
+             */
+            if (!(smpp->conn->status == SMSCCONN_ACTIVE ||
+                    smpp->conn->status == SMSCCONN_ACTIVE_RECV)) {
+                warning(0, "SMPP[%s]: SMSC sent %s PDU while session not bound, ignored.",
+                        octstr_get_cstr(smpp->conn->id), pdu->type_name);
+                return 0;
+            }
             resp = smpp_pdu_create(data_sm_resp, pdu->u.data_sm.sequence_number);
             /*
              * If SMSCConn stopped then send temp. error code
@@ -1660,6 +1677,16 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
             break;
 
         case deliver_sm:
+            /*
+             * Session state check
+             */
+            if (!(smpp->conn->status == SMSCCONN_ACTIVE ||
+                    smpp->conn->status == SMSCCONN_ACTIVE_RECV)) {
+                warning(0, "SMPP[%s]: SMSC sent %s PDU while session not bound, ignored.",
+                        octstr_get_cstr(smpp->conn->id), pdu->type_name);
+                return 0;
+            }
+
             /*
              * If SMSCConn stopped then send temp. error code
              */
@@ -1720,13 +1747,31 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
             break;
 
         case enquire_link:
+            /*
+             * Session state check
+             */
+            if (!(smpp->conn->status == SMSCCONN_ACTIVE ||
+                    smpp->conn->status == SMSCCONN_ACTIVE_RECV)) {
+                warning(0, "SMPP[%s]: SMSC sent %s PDU while session not bound, ignored.",
+                        octstr_get_cstr(smpp->conn->id), pdu->type_name);
+                return 0;
+            }
             resp = smpp_pdu_create(enquire_link_resp,
                         pdu->u.enquire_link.sequence_number);
             break;
 
         case enquire_link_resp:
+            /*
+             * Session state check
+             */
+            if (!(smpp->conn->status == SMSCCONN_ACTIVE ||
+                    smpp->conn->status == SMSCCONN_ACTIVE_RECV)) {
+                warning(0, "SMPP[%s]: SMSC sent %s PDU while session not bound, ignored.",
+                        octstr_get_cstr(smpp->conn->id), pdu->type_name);
+                return 0;
+            }
             if (pdu->u.enquire_link_resp.command_status != 0) {
-                error(0, "SMPP[%s]: SMSC got error to enquire_link, code 0x%08lx (%s).",
+                error(0, "SMPP[%s]: SMSC got error to enquire_link PDU, code 0x%08lx (%s).",
                       octstr_get_cstr(smpp->conn->id),
                       pdu->u.enquire_link_resp.command_status,
                 smpp_error_to_string(pdu->u.enquire_link_resp.command_status));
@@ -1734,11 +1779,20 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
             break;
 
         case submit_sm_resp:
+            /*
+             * Session state check
+             */
+            if (!(smpp->conn->status == SMSCCONN_ACTIVE)) {
+                warning(0, "SMPP[%s]: SMSC sent %s PDU while session not bound, ignored.",
+                        octstr_get_cstr(smpp->conn->id), pdu->type_name);
+                return 0;
+            }
+
             os = octstr_format("%ld", pdu->u.submit_sm_resp.sequence_number);
             smpp_msg = dict_remove(smpp->sent_msgs, os);
             octstr_destroy(os);
             if (smpp_msg == NULL) {
-                warning(0, "SMPP[%s]: SMSC sent submit_sm_resp "
+                warning(0, "SMPP[%s]: SMSC sent submit_sm_resp PDU "
                         "with wrong sequence number 0x%08lx",
                         octstr_get_cstr(smpp->conn->id),
                         pdu->u.submit_sm_resp.sequence_number);
@@ -1754,7 +1808,7 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
 
             if (pdu->u.submit_sm_resp.command_status != 0) {
                 error(0, "SMPP[%s]: SMSC returned error code 0x%08lx (%s) "
-                      "in response to submit_sm.",
+                      "in response to submit_sm PDU.",
                       octstr_get_cstr(smpp->conn->id),
                       pdu->u.submit_sm_resp.command_status,
                       smpp_error_to_string(pdu->u.submit_sm_resp.command_status));
@@ -1793,17 +1847,26 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
                     }
                 }
 
-                /* SMSC ACK.. now we have the message id. */
-                if (DLR_IS_ENABLED_DEVICE(msg->sms.dlr_mask))
-                    dlr_add(smpp->conn->id, tmp, msg);
+                /*
+                 * SMSC ACK.. now we have the message ID.
+                 * The message ID is inserted into the msg struct in dlr_add(),
+                 * and we add it manually here if no DLR was requested, in
+                 * order to get it logged to access-log.
+                 */
+                if (DLR_IS_ENABLED_DEVICE(msg->sms.dlr_mask)) {
+                    dlr_add(smpp->conn->id, tmp, msg, 0);
+                    octstr_destroy(tmp);
+                } else {
+                    octstr_destroy(msg->sms.foreign_id);
+                    msg->sms.foreign_id = tmp;
+                }
 
-                octstr_destroy(tmp);
                 bb_smscconn_sent(smpp->conn, msg, NULL);
                 --(*pending_submits);
             } /* end if for SMSC ACK */
             else {
                 error(0, "SMPP[%s]: SMSC returned error code 0x%08lx (%s) "
-                      "in response to submit_sm, but no `message_id' value!",
+                      "in response to submit_sm PDU, but no `message_id' value!",
                       octstr_get_cstr(smpp->conn->id),
                       pdu->u.submit_sm_resp.command_status,
                       smpp_error_to_string(pdu->u.submit_sm_resp.command_status));
@@ -1813,6 +1876,15 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
             break;
 
         case bind_transmitter_resp:
+            /*
+             * Session state check
+             */
+            if (smpp->conn->status == SMSCCONN_ACTIVE ||
+                    smpp->conn->status == SMSCCONN_ACTIVE_RECV) {
+                warning(0, "SMPP[%s]: SMSC sent %s PDU while session bound, ignored.",
+                        octstr_get_cstr(smpp->conn->id), pdu->type_name);
+                return 0;
+            }
             if (pdu->u.bind_transmitter_resp.command_status != 0 &&
                 pdu->u.bind_transmitter_resp.command_status != SMPP_ESME_RALYNBD) {
                 error(0, "SMPP[%s]: SMSC rejected login to transmit, code 0x%08lx (%s).",
@@ -1838,6 +1910,15 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
             break;
 
         case bind_transceiver_resp:
+            /*
+             * Session state check
+             */
+            if (smpp->conn->status == SMSCCONN_ACTIVE ||
+                    smpp->conn->status == SMSCCONN_ACTIVE_RECV) {
+                warning(0, "SMPP[%s]: SMSC sent %s PDU while session bound, ignored.",
+                        octstr_get_cstr(smpp->conn->id), pdu->type_name);
+                return 0;
+            }
             if (pdu->u.bind_transceiver_resp.command_status != 0 &&
                 pdu->u.bind_transceiver_resp.command_status != SMPP_ESME_RALYNBD) {
                 error(0, "SMPP[%s]: SMSC rejected login to transmit, code 0x%08lx (%s).",
@@ -1863,6 +1944,15 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
             break;
 
         case bind_receiver_resp:
+            /*
+             * Session state check
+             */
+            if (smpp->conn->status == SMSCCONN_ACTIVE ||
+                    smpp->conn->status == SMSCCONN_ACTIVE_RECV) {
+                warning(0, "SMPP[%s]: SMSC sent %s PDU while session bound, ignored.",
+                        octstr_get_cstr(smpp->conn->id), pdu->type_name);
+                return 0;
+            }
             if (pdu->u.bind_receiver_resp.command_status != 0 &&
                 pdu->u.bind_receiver_resp.command_status != SMPP_ESME_RALYNBD) {
                 error(0, "SMPP[%s]: SMSC rejected login to receive, code 0x%08lx (%s).",
@@ -1889,6 +1979,15 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
             break;
 
         case unbind:
+            /*
+             * Session state check
+             */
+            if (!(smpp->conn->status == SMSCCONN_ACTIVE ||
+                    smpp->conn->status == SMSCCONN_ACTIVE_RECV)) {
+                warning(0, "SMPP[%s]: SMSC sent %s PDU while session not bound, ignored.",
+                        octstr_get_cstr(smpp->conn->id), pdu->type_name);
+                return 0;
+            }
             resp = smpp_pdu_create(unbind_resp, pdu->u.unbind.sequence_number);
             mutex_lock(smpp->conn->flow_mutex);
             smpp->conn->status = SMSCCONN_DISCONNECTED;
@@ -1897,12 +1996,31 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
             break;
 
         case unbind_resp:
+            /*
+             * Session state check
+             */
+            if (!(smpp->conn->status == SMSCCONN_ACTIVE ||
+                    smpp->conn->status == SMSCCONN_ACTIVE_RECV)) {
+                warning(0, "SMPP[%s]: SMSC sent %s PDU while session not bound, ignored.",
+                        octstr_get_cstr(smpp->conn->id), pdu->type_name);
+                return 0;
+            }
             mutex_lock(smpp->conn->flow_mutex);
             smpp->conn->status = SMSCCONN_DISCONNECTED;
             mutex_unlock(smpp->conn->flow_mutex);
             break;
 
         case generic_nack:
+            /*
+             * Session state check
+             */
+            if (!(smpp->conn->status == SMSCCONN_ACTIVE ||
+                    smpp->conn->status == SMSCCONN_ACTIVE_RECV)) {
+                warning(0, "SMPP[%s]: SMSC sent %s PDU while session not bound, ignored.",
+                        octstr_get_cstr(smpp->conn->id), pdu->type_name);
+                return 0;
+            }
+
             cmd_stat  = pdu->u.generic_nack.command_status;
 
             os = octstr_format("%ld", pdu->u.generic_nack.sequence_number);
@@ -1918,7 +2036,7 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
                 msg = smpp_msg->msg;
                 smpp_msg_destroy(smpp_msg, 0);
 
-                error(0, "SMPP[%s]: SMSC returned error code 0x%08lx (%s) in response to submit_sm.",
+                error(0, "SMPP[%s]: SMSC returned error code 0x%08lx (%s) in response to submit_sm PDU.",
                       octstr_get_cstr(smpp->conn->id),
                       cmd_stat,
                 smpp_error_to_string(cmd_stat));
@@ -1940,8 +2058,8 @@ static int handle_pdu(SMPP *smpp, Connection *conn, SMPP_PDU *pdu,
             break;
         
         default:
-            error(0, "SMPP[%s]: Unknown PDU type 0x%08lx, ignored.",
-                  octstr_get_cstr(smpp->conn->id), pdu->type);
+            error(0, "SMPP[%s]: Unhandled %s PDU type 0x%08lx, ignored.",
+                  octstr_get_cstr(smpp->conn->id), pdu->type_name, pdu->type);
             /*
              * We received an unknown PDU type, therefore we will respond
              * with a generic_nack PDU, see SMPP v3.4 spec, section 3.3.
@@ -2415,7 +2533,17 @@ int smsc_smpp_create(SMSCConn *conn, CfgGroup *grp)
     /* Check that config is OK */
     ok = 1;
     if (host == NULL) {
-        error(0,"SMPP: Configuration file doesn't specify host");
+        error(0, "SMPP: Configuration file doesn't specify host");
+        ok = 0;
+    }
+    if (port == 0 && receive_port == 0) {
+        port = SMPP_DEFAULT_PORT;
+        warning(0, "SMPP: Configuration file doesn't specify port or receive-port. "
+                   "Using 'port = %ld' as default.", port);
+    }
+    if (port != 0 && receive_port != 0) {
+        error(0, "SMPP: Configuration file can only have port or receive-port. "
+                 "Usage of both in one group is deprecated!");
         ok = 0;
     }
     if (username == NULL) {

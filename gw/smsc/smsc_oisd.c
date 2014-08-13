@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2013 Kannel Group  
+ * Copyright (c) 2001-2014 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -1172,7 +1172,7 @@ static int oisd_submit_msg(SMSCConn *conn, Msg *msg)
 
     ret = oisd_request(packet, conn, &ts);
     if((ret == 0) && (ts) && DLR_IS_SUCCESS_OR_FAIL(msg->sms.dlr_mask) && !pdata->no_dlr) {
-        dlr_add(conn->name, ts, msg);
+        dlr_add(conn->name, ts, msg, 0);
     }
     octstr_destroy(ts);
     packet_destroy(packet);

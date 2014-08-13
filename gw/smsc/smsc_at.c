@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2013 Kannel Group  
+ * Copyright (c) 2001-2014 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -2327,7 +2327,7 @@ static void at2_send_one_message(PrivAT2data *privdata, Msg *msg)
                     else {
                         Octstr *dlrmsgid = octstr_format("%d", msg_id);
 
-                        dlr_add(privdata->conn->id, dlrmsgid, msg);
+                        dlr_add(privdata->conn->id, dlrmsgid, msg, 0);
 
                         O_DESTROY(dlrmsgid);
 

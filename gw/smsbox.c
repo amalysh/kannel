@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2013 Kannel Group  
+ * Copyright (c) 2001-2014 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -1157,7 +1157,7 @@ static void url_result_thread(void *arg)
             octstr_destroy(type);
         } else if (max_http_retries > retries) {
             item = gw_malloc(sizeof(TimerItem));
-            item->timer = gw_timer_create(timerset, smsbox_http_requests);
+            item->timer = gw_timer_create(timerset, smsbox_http_requests, NULL);
             item->id = remember_receiver(msg, trans, method, req_url,
                                          req_headers, req_body, retries);
             gw_timer_elapsed_start(item->timer, http_queue_delay, item);

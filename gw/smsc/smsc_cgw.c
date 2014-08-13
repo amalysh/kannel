@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2013 Kannel Group  
+ * Copyright (c) 2001-2014 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -1176,7 +1176,7 @@ static int cgw_handle_op(SMSCConn *conn, Connection *server, struct cgwop *cgwop
             octstr_append_char(ts, '-');
             octstr_append_decimal(ts, trn);
 
-            dlr_add(conn->id, ts, msg);
+            dlr_add(conn->id, ts, msg, 0);
 
             octstr_destroy(ts);
             privdata->dlr[trn] = 1;

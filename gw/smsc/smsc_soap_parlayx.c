@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2013 Kannel Group  
+ * Copyright (c) 2001-2014 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -78,9 +78,9 @@
 
 #ifdef HAVE_GSOAP
 
-#include "soap/service/parlayx/parlayxH.h"
-#include "soap/service/parlayx/parlayx.nsmap"
-#include "soap/service/parlayx/wsseapi.h"
+#include "soapH.h"
+#include "SendSmsBinding.nsmap"
+#include "wsseapi.h"
 
 
 /*
@@ -654,7 +654,7 @@ static void soap_send_sms(struct soap *soap, SMSCConn *conn, Msg *sms)
 
         /* add to our own DLR storage */               
         if (DLR_IS_ENABLED_DEVICE(sms->sms.dlr_mask) && mid) {
-            dlr_add(conn->id, mid, sms);
+            dlr_add(conn->id, mid, sms, 0);
 
 #ifdef DEBUG
             /* 
@@ -692,7 +692,7 @@ static void soap_parse_reply(SMSCConn *conn, Msg *msg, int status,
             uuid_unparse(msg->sms.id, id);
             mid = octstr_create(id); 
 
-            dlr_add(conn->id, mid, msg);
+            dlr_add(conn->id, mid, msg, 0);
 
             octstr_destroy(mid);            
         }
@@ -737,7 +737,7 @@ static void soap_receive_sms(SMSCConn *conn, HTTPClient *client,
     soap->user = buf;
 
     /* perform the server operation */
-    parlayx_serve(soap);
+    soap_serve(soap);
 
     /* move response XML from buffer to octstr */
     response = octstr_create("");
@@ -1095,12 +1095,6 @@ int __px1__sendSms (
         /* response struct */ 
         struct pxSmsSend__sendSmsResponse *resp)
 {
-    /*
-    if (soap->header->mm7__TransactionID) {
-        debug("",0,"SubmitSMReq: TransactionID: %s", soap->header->mm7__TransactionID);
-    }
-    */
-        
     /* positive response */
     resp->result = "100";
 

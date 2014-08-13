@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2013 Kannel Group  
+ * Copyright (c) 2001-2014 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -65,10 +65,10 @@
 #include <hiredis.h>
 
 /*
- * Define RADIS_DEBUG to get DEBUG level output of the
+ * Define REDIS_DEBUG to get DEBUG level output of the
  * Redis commands send to the server.
  */
-/* #define RADIS_DEBUG 1 */
+/* #define REDIS_DEBUG 1 */
 
 #define REDIS_DEFAULT_PORT  6379
 
@@ -279,6 +279,19 @@ static int redis_select(void *conn, Octstr *sql, List *binds, List **res)
             return 0;
             break;
 
+        case REDIS_REPLY_INTEGER:
+#if defined(REDIS_DEBUG)
+            debug("dbpool.redis",0,"Received REDIS_REPLY_INTEGER");
+#endif
+            *res = gwlist_create();
+            row = gwlist_create();
+            temp = octstr_format("%ld", reply->integer);
+            gwlist_append(row, temp);
+            gwlist_produce(*res, row);
+            freeReplyObject(reply);
+            return 0;
+            break;
+
         case REDIS_REPLY_ARRAY:
 #if defined(REDIS_DEBUG)
             debug("dbpool.redis",0,"Received REDIS_REPLY_ARRAY");
@@ -292,6 +305,9 @@ static int redis_select(void *conn, Octstr *sql, List *binds, List **res)
                     continue;
                 }
                 temp = octstr_create_from_data(reply->element[i]->str, reply->element[i]->len);
+#if defined(REDIS_DEBUG)
+                debug("dbpool.redis",0,"Received REDIS_REPLY_ARRAY[%ld]: %s", i, octstr_get_cstr(temp));
+#endif
                 gwlist_append(row, temp);
             }
             gwlist_produce(*res, row);
@@ -301,7 +317,7 @@ static int redis_select(void *conn, Octstr *sql, List *binds, List **res)
 
         default:
 #if defined(REDIS_DEBUG)
-            debug("dbpool.redis",0,"Received unknown Redis reply %d", reply->type);
+            error(0,"REDIS: Received unknown Redis reply type %d", reply->type);
 #endif
             break;
     }

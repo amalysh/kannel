@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2013 Kannel Group  
+ * Copyright (c) 2001-2014 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -187,13 +187,19 @@ static void dlr_redis_add(struct dlr_entry *entry)
             fields->field_boxc,
             fields->field_status);
 
+    /* prepare values */
+    if (entry->url) {
+        octstr_url_encode(entry->url);
+        octstr_replace(entry->url, octstr_imm("%"), octstr_imm("%%"));
+    }
+    os_mask = octstr_format("%d", entry->mask);
+
     gwlist_append(binds, entry->smsc);
     gwlist_append(binds, tsclean);
     gwlist_append(binds, srcclean);
     gwlist_append(binds, dstclean);
     gwlist_append(binds, entry->service);
     gwlist_append(binds, entry->url);
-    os_mask = octstr_format("%d", entry->mask);
     gwlist_append(binds, os_mask);
     gwlist_append(binds, entry->boxc_id);
 
@@ -214,9 +220,10 @@ static void dlr_redis_add(struct dlr_entry *entry)
             sql = octstr_format("EXPIRE %S %ld", key, fields->ttl);
             res = dbpool_conn_update(pconn, sql, NULL);
         }
-        octstr_destroy(sql);
-        sql = octstr_format("INCR %S:Count", fields->table);
-        res = dbpool_conn_update(pconn, sql, NULL);
+        /* We are not performing an 'INCR <table>:Count'
+         * operation here, since we can't be accurate due
+         * to TTL'ed expiration. Rather use 'DBSIZE' based
+         * on seperated databases in redis. */
     }
 
     dbpool_conn_produce(pconn);
@@ -289,19 +296,29 @@ static struct dlr_entry *dlr_redis_get(const Octstr *smsc, const Octstr *ts, con
 
     if (gwlist_len(result) > 0) {
         row = gwlist_extract_first(result);
-        res = dlr_entry_create();
-        gw_assert(res != NULL);
-        res->mask = atoi(octstr_get_cstr(gwlist_get(row, 0)));
-        get_octstr_value(&res->service, row, 1);
-        get_octstr_value(&res->url, row, 2);
-        get_octstr_value(&res->source, row, 3);
-        get_octstr_value(&res->destination, row, 4);
-        get_octstr_value(&res->boxc_id, row, 5);
-        gwlist_destroy(row, octstr_destroy_item);
-        res->smsc = octstr_duplicate(smsc);
 
-        octstr_replace(res->source, octstr_imm("__space__"), octstr_imm(" "));
-        octstr_replace(res->destination, octstr_imm("__space__"), octstr_imm(" "));
+        /*
+         * If we get an empty set back from redis, this is
+         * still an array with "" values, representing (nil).
+         * If the mask is empty then this can't be a valid
+         * set, therefore bail out.
+         */
+        if (octstr_len(gwlist_get(row, 0)) > 0) {
+            res = dlr_entry_create();
+            gw_assert(res != NULL);
+            res->mask = atoi(octstr_get_cstr(gwlist_get(row, 0)));
+            get_octstr_value(&res->service, row, 1);
+            get_octstr_value(&res->url, row, 2);
+            octstr_url_decode(res->url);
+            get_octstr_value(&res->source, row, 3);
+            get_octstr_value(&res->destination, row, 4);
+            get_octstr_value(&res->boxc_id, row, 5);
+            res->smsc = octstr_duplicate(smsc);
+
+            octstr_replace(res->source, octstr_imm("__space__"), octstr_imm(" "));
+            octstr_replace(res->destination, octstr_imm("__space__"), octstr_imm(" "));
+        }
+        gwlist_destroy(row, octstr_destroy_item);
     }
     gwlist_destroy(result, NULL);
 
@@ -355,11 +372,8 @@ static void dlr_redis_remove(const Octstr *smsc, const Octstr *ts, const Octstr 
         error(0, "DLR: REDIS: Error while removing dlr entry for %s",
               octstr_get_cstr(key));
     }
-    else {
-        octstr_destroy(sql);
-        sql = octstr_format("DECR %S:Count", fields->table);
-        res = dbpool_conn_update(pconn, sql, NULL);
-    }
+    /* We don't perform 'DECR <table>:Count', since we have TTL'ed
+     * expirations, which can't be handled with manual counters. */
 
     dbpool_conn_produce(pconn);
     octstr_destroy(sql);
@@ -414,7 +428,6 @@ static void dlr_redis_update(const Octstr *smsc, const Octstr *ts, const Octstr 
 static long dlr_redis_messages(void)
 {
     List *result, *row;
-    Octstr *sql;
     DBPoolConn *conn;
     long msgs = -1;
 
@@ -422,28 +435,12 @@ static long dlr_redis_messages(void)
     if (conn == NULL)
         return -1;
 
-    /*
-     * An easier way to get the number of DLRs would be to count the keys
-     * with the table prefix using the Redis "KEYS %S:*" command, however the
-     * Redis doc strongly suggests against using the KEYS command in live code.
-     * Instead, we're tracking the number of outstanding DLRs in a seaparate
-     * counter key. Another possible implementation would be to require a
-     * dedicated Redis DB and to parse the output of the "INFO" command to get
-     * the key count.
-     */
-    sql = octstr_format("GET %S:Count", fields->table);
-
-    if (dbpool_conn_select(conn, sql, NULL, &result) != 0) {
-        octstr_destroy(sql);
+    if (dbpool_conn_select(conn, octstr_imm("DBSIZE"), NULL, &result) != 0) {
         dbpool_conn_produce(conn);
-        /* 
-         * The fetch will fail if the :Count key doesn't exist - i.e. 0 msgs 
-         */
         return 0;
     }
 
     dbpool_conn_produce(conn);
-    octstr_destroy(sql);
 
     if (gwlist_len(result) > 0) {
         row = gwlist_extract_first(result);

@@ -1,7 +1,7 @@
 /* ====================================================================
  * The Kannel Software License, Version 1.0
  *
- * Copyright (c) 2001-2013 Kannel Group
+ * Copyright (c) 2001-2014 Kannel Group
  * Copyright (c) 1998-2001 WapIT Ltd.
  * All rights reserved.
  *
@@ -167,7 +167,7 @@ static void clickatell_parse_reply(SMSCConn *conn, Msg *msg, int status,
 
             /* SMSC ACK.. now we have the message id. */
             if (DLR_IS_ENABLED_DEVICE(msg->sms.dlr_mask))
-                dlr_add(conn->id, msgid, msg);
+                dlr_add(conn->id, msgid, msg, 0);
 
             bb_smscconn_sent(conn, msg, NULL);
 

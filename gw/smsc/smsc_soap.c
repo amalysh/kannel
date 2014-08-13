@@ -1,7 +1,7 @@
 /* ==================================================================== 
  * The Kannel Software License, Version 1.0 
  * 
- * Copyright (c) 2001-2013 Kannel Group  
+ * Copyright (c) 2001-2014 Kannel Group  
  * Copyright (c) 1998-2001 WapIT Ltd.   
  * All rights reserved. 
  * 
@@ -1173,7 +1173,7 @@ static void soap_read_response(SMSCConn *conn)
         sprintf(tmpid,"%lld",msgID);
         debug("bb.soap.read_response",0,"SOAP[%s]: ACK - id: %lld", octstr_get_cstr(privdata->name), msgID);
 
-        dlr_add(conn->id, octstr_imm(tmpid), msg);
+        dlr_add(conn->id, octstr_imm(tmpid), msg, 0);
 
         /* send msg back to bearerbox for recycling */
         bb_smscconn_sent(conn, msg, NULL);
