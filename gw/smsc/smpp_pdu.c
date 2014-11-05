@@ -330,7 +330,7 @@ static int is_defined_field(long type, const char *field_name)
     #define INTEGER(name, octets) OCTETS(name, octets)
     #define NULTERMINATED(name, max_octets) OCTETS(name, max_octets)
     #define OCTETS(name, field_giving_octetst) \
-            if (strnstr(#name, field_name, sizeof(#name) - 1) == 0) \
+            if (strncmp(#name, field_name, sizeof(#name) - 1) == 0) \
                 return 1;
     #define PDU(name, id, fields) \
         case id: { \
