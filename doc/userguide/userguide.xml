@@ -1397,20 +1397,98 @@ admin-password = f00bar
     <row><entry><literal>white-list</literal></entry>
      <entry>URL</entry>
      <entry valign="bottom">
+        (Deprecated, see <literal>white-list-sender</literal>).
+     </entry></row>
+
+     <row><entry><literal>white-list-regex</literal></entry>
+        <entry>POSIX regular expression</entry>
+        <entry valign="bottom">
+        (Deprecated, see <literal>white-list-sender-regex</literal>).
+        </entry>   
+     </row>
+
+    <row><entry><literal>black-list</literal></entry>
+     <entry>URL</entry>
+     <entry valign="bottom">
+        (Deprecated, see <literal>black-list-sender</literal>).
+     </entry></row>
+
+     <row><entry><literal>black-list-regex</literal></entry>
+        <entry>POSIX regular expression</entry>
+        <entry valign="bottom">
+        (Deprecated, see <literal>black-list-sender-regex</literal>).
+        </entry>   
+     </row>
+
+    <row><entry><literal>white-list-sender</literal></entry>
+     <entry>URL</entry>
+     <entry valign="bottom">
         Load a list of accepted senders of SMS messages. If a sender
         of an SMS message is not in this list, any message received
-        from the SMS Center is discarded. See notes of phone number
+        from the SMS Center, or tried to be delivered to the SMS Center
+        is rejected. See notes of phone number
         format from numhash.h header file. NOTE: the system has only
         a precision of last 9 or 18 digits of phone numbers, so
         beware!
      </entry></row>
 
-    <row><entry><literal>black-list</literal></entry>
+     <row><entry><literal>white-list-sender-regex</literal></entry>
+        <entry>POSIX regular expression</entry>
+        <entry valign="bottom">
+        A regular expression defining the set of accepted senders.
+        See section on <xref linkend="regular-expressions"/> for details.
+        </entry>   
+     </row>
+
+    <row><entry><literal>black-list-sender</literal></entry>
      <entry>URL</entry>
      <entry valign="bottom">
-        As white-list, but SMS messages to these numbers are
-        automatically discarded
+        As white-list-sender, but SMS messages from these sender numbers are
+        automatically rejected.
      </entry></row>
+
+     <row><entry><literal>black-list-sender-regex</literal></entry>
+        <entry>POSIX regular expression</entry>
+        <entry valign="bottom">
+        A regular expression defining the set of rejected senders.
+        See section on <xref linkend="regular-expressions"/> for details.
+        </entry>   
+     </row>
+
+    <row><entry><literal>white-list-receiver</literal></entry>
+     <entry>URL</entry>
+     <entry valign="bottom">
+        Load a list of accepted receiver of SMS messages. If a receiver
+        of an SMS message is not in this list, any message received
+        from the SMS Center, or tried to be delivered to the SMS Center
+        is rejected. See notes of phone number
+        format from numhash.h header file. NOTE: the system has only
+        a precision of last 9 or 18 digits of phone numbers, so
+        beware!
+     </entry></row>
+
+     <row><entry><literal>white-list-receiver-regex</literal></entry>
+        <entry>POSIX regular expression</entry>
+        <entry valign="bottom">
+        A regular expression defining the set of accepted receivers.
+        See section on <xref linkend="regular-expressions"/> for details.
+        </entry>   
+     </row>
+
+    <row><entry><literal>black-list-receiver</literal></entry>
+     <entry>URL</entry>
+     <entry valign="bottom">
+        As white-list, but SMS messages from these receiver numbers are
+        automatically rejected.
+     </entry></row>
+
+     <row><entry><literal>black-list-receiver-regex</literal></entry>
+        <entry>POSIX regular expression</entry>
+        <entry valign="bottom">
+        A regular expression defining the set of rejected receivers.
+        See section on <xref linkend="regular-expressions"/> for details.
+        </entry>   
+     </row>
 
     <row><entry><literal>store-type</literal></entry>
      <entry>filename</entry>
@@ -1547,7 +1625,7 @@ admin-password = f00bar
      <row><entry><literal>maximum-queue-length</literal></entry>
 	  <entry>number of messages</entry>
      <entry valign="bottom">
-   	 (deprecated, see <literal>sms-incoming-queue-limit</literal>).
+   	 (Deprecated, see <literal>sms-incoming-queue-limit</literal>).
      </entry></row>
 
      <row><entry><literal>sms-incoming-queue-limit</literal></entry>
@@ -1568,21 +1646,6 @@ admin-password = f00bar
         has hit this value, Kannel began to discard them.
         The default value, 1 million, works for most installations.
      </entry></row>
-
-     <row><entry><literal>white-list-regex</literal></entry>
-        <entry>POSIX regular expression</entry>
-        <entry valign="bottom">
-        A regular expression defining the set of accepted senders.
-        See section on <xref linkend="regular-expressions"/> for details.
-        </entry>   
-     </row>
-     <row><entry><literal>black-list-regex</literal></entry>
-        <entry>POSIX regular expression</entry>
-        <entry valign="bottom">
-        A regular expression defining the set of rejected senders.
-        See section on <xref linkend="regular-expressions"/> for details.
-        </entry>   
-     </row>
 
      <row><entry><literal>smsbox-max-pending</literal></entry>
         <entry>number of messages</entry>
@@ -2018,9 +2081,23 @@ commands never arrive nor can you restart it via WAP anymore.</para>
 
 	<row><entry><literal>restart</literal></entry>
    <entry valign="bottom">
-        Re-start whole bearerbox, hence all SMSC links. Password required.
- 		  Beware that you loose the smsbox connections in such a case.
+        This is the hard restarting version, where we fully stop the
+        bearerbox and then initiate from ground up.
+        Beware that you loose the smsbox connections in such a case.
    </entry></row>
+
+    <row><entry><literal>graceful-restart</literal></entry>
+    <entry valign="bottom">
+        Re-start bearerbox gracefully, hence only the changes in the
+        configuration for the SMSC connections are performed. I.e.
+        an added SMSC group will be start, and a removed SMSC group
+        will be shutdown and destroyed. Any unchanged SMSC connection
+        keeps on running without interruption. Password required.
+        This is the soft restarting version, where we keep all internal
+        parts of the bearebox running, including the smsbox connections.
+        The same graceful restart can be initiated by sending a SIGHUP
+        signal to the bearerbox daemon process.
+    </entry></row>
 
 	<row><entry><literal>log-level</literal></entry>
    <entry valign="bottom">
@@ -2935,6 +3012,14 @@ secret-nas = radius
         This allows SMSC to be connected at a later time with the add-smsc HTTP administration command. 
         If set to 'true' the connection will start as 'dead' and will require a start-smsc command 
         to activate it. Defaults to 'false' if not present.</entry>
+     </row>
+
+     <row><entry><literal>instances</literal></entry>
+        <entry>number</entry>
+        The number of same instances of this group to be created. This allows to declare
+        the config group one time in the configuration and to multiply it by this value
+        for the numner of runtime instances. (default: 1)
+        </entry>   
      </row>
 
   </tbody>
@@ -9615,19 +9700,26 @@ test/fakesmsc -i 0.1 -m 100 "100 200 text nop" "100 300 text echo this"
     <para>The parts of a message are separated with spaces. As each message is
     taken as one argument, it must be put in quotation marks.</para>
 
-    <para>Message type must be one of the following: "text", "data" and "udh".
-    Here's an example of using each:</para>
+    <para>Message type must be one of the following: "text", "data", "ucs2", 
+    "udh-data", "udh-text", "route" and "dlr-mask".
+    Here are some examples:</para>
 
 <programlisting>
 test/fakesmsc -i 0.01 -v 1 -m 1000 "100 300 text echo this message"
 test/fakesmsc -i 0.01 -m 1000 "100 300 data echo+these+chars%03%04%7f"
-test/fakesmsc -m 1 "100 500 udh %0eudh+stuff+here main+message"
+test/fakesmsc -m 1 "100 500 udh-data %0eudh+stuff+here main+message"
 </programlisting>
 
     <para>For "text", the rest of the argument is taken as the literal
     message. For "data", the next part must be the url-encoded version of
-    the message. Space is coded as '+'. For "udh", the next 2 parts
-    are the UDH and main message. Both must be in url-encoded form.</para>
+    the message. Space is coded as '+'. For "ucs2", the next part must be the
+    url-encoded version of the message. For "udh-data", the next 2 parts
+    are the UDH and main message. Both must be in url-encoded form. For "udh-text",
+    the UDH part must be url-encoded, and the message is taken as literals.
+    For "route" both values are literal, where the first value defines the smsbox
+    route destination. For "dlr-mask" noth values are literal, where the first
+    value defines the numerical DLR event.
+    </para>
 
     <para>If multiple messages are given, fakesmsc randomly chooses
     one for each sending.</para>
@@ -10461,6 +10553,8 @@ values:
 <itemizedlist>
 <listitem><para>source_addr_ton</para></listitem>
 <listitem><para>source_addr_npi</para></listitem>
+<listitem><para>dest_addr_ton</para></listitem>
+<listitem><para>dest_addr_npi</para></listitem>
 </itemizedlist>
 </para>
 
@@ -10628,9 +10722,12 @@ values:
         to /etc/logrotate.d) is shown below. In this example the Kannel log files found 
         in /var/log/kannel are rotated and compressed daily over 365 days.  See the 
         documentation for logrotate for more details.  Of particular note however is the 
-        postrotate command, this killall -HUP issues a HUP command to each Kannel
-        box running. The HUP signal has the effect of reopening the log file, without this 
-        command Kannel will continue to write to the rotated log file.
+        postrotate command, this killall -HUP issues a SIGHUP signal to each Kannel
+        box process running. The SIGHUP signal has the effect of reopening the log file, 
+        and performing graceful restart of SMSC connections. Without this command Kannel 
+        will continue to write to the rotated log file. Kannel bearerbox can use the 
+        SIGUSR2 to reopen the logs only, without performing the graceful restart. This
+        may be more applicable for logrotate usage. 
         </para>
 
         <screen><userinput>
@@ -10644,7 +10741,7 @@ values:
               create 640 kannel adm
               sharedscripts
               postrotate
-                    killall -HUP bearerbox smsbox wapbox || true > /dev/null 2> /dev/null
+                    killall -USR2 bearerbox && killall -HUP smsbox wapbox || true > /dev/null 2> /dev/null
               endscript
         }
         </userinput></screen>

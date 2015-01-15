@@ -127,17 +127,24 @@ extern Octstr *cfg_filename;
 static volatile sig_atomic_t smsc_running;
 static List *smsc_list;
 static RWLock smsc_list_lock;
+static Cfg *cfg_reloaded;
 static List *smsc_groups;
 static Octstr *unified_prefix;
 
 static RWLock white_black_list_lock;
-static Octstr *black_list_url;
-static Octstr *white_list_url;
-static Numhash *black_list;
-static Numhash *white_list;
+static Octstr *black_list_sender_url;
+static Octstr *white_list_sender_url;
+static Octstr *black_list_receiver_url;
+static Octstr *white_list_receiver_url;
+static Numhash *black_list_sender;
+static Numhash *white_list_sender;
+static Numhash *black_list_receiver;
+static Numhash *white_list_receiver;
 
-static regex_t *white_list_regex;
-static regex_t *black_list_regex;
+static regex_t *white_list_sender_regex;
+static regex_t *black_list_sender_regex;
+static regex_t *white_list_receiver_regex;
+static regex_t *black_list_receiver_regex;
 
 static long router_thread = -1;
 
@@ -370,6 +377,12 @@ void bb_smscconn_send_failed(SMSCConn *conn, Msg *sms, int reason, Octstr *reply
             else
                 bb_alog_sms(conn, sms, "EXPIRED DLR");
         }
+        else if (reason == SMSCCONN_FAILED_REJECTED) {
+            if (sms->sms.sms_type != report_mt)
+                bb_alog_sms(conn, sms, "REJECTED Send SMS");
+            else
+                bb_alog_sms(conn, sms, "REJECTED Send DLR");
+        }
         else {
             if (sms->sms.sms_type != report_mt)
                 bb_alog_sms(conn, sms, "FAILED Send SMS");
@@ -423,47 +436,95 @@ long bb_smscconn_receive(SMSCConn *conn, Msg *sms)
     uf = unified_prefix ? octstr_get_cstr(unified_prefix) : NULL;
     normalize_number(uf, &(sms->sms.sender));
 
-    gw_rwlock_rdlock(&white_black_list_lock);
-    if (white_list && numhash_find_number(white_list, sms->sms.sender) < 1) {
-        gw_rwlock_unlock(&white_black_list_lock);
-        info(0, "Number <%s> is not in white-list, message discarded",
-             octstr_get_cstr(sms->sms.sender));
-        bb_alog_sms(conn, sms, "REJECTED - not white-listed SMS");
-        msg_destroy(sms);
-        return SMSCCONN_FAILED_REJECTED;
-    }
-
-    if (white_list_regex && gw_regex_match_pre(white_list_regex, sms->sms.sender) == 0) {
-        gw_rwlock_unlock(&white_black_list_lock);
-        info(0, "Number <%s> is not in white-list, message discarded",
-             octstr_get_cstr(sms->sms.sender));
-        bb_alog_sms(conn, sms, "REJECTED - not white-regex-listed SMS");
-        msg_destroy(sms);
-        return SMSCCONN_FAILED_REJECTED;
-    }
-    
-    if (black_list && numhash_find_number(black_list, sms->sms.sender) == 1) {
-        gw_rwlock_unlock(&white_black_list_lock);
-        info(0, "Number <%s> is in black-list, message discarded",
-             octstr_get_cstr(sms->sms.sender));
-        bb_alog_sms(conn, sms, "REJECTED - black-listed SMS");
-        msg_destroy(sms);
-        return SMSCCONN_FAILED_REJECTED;
-    }
-
-    if (black_list_regex && gw_regex_match_pre(black_list_regex, sms->sms.sender) == 0) {
-        gw_rwlock_unlock(&white_black_list_lock);
-        info(0, "Number <%s> is not in black-list, message discarded",
-             octstr_get_cstr(sms->sms.sender));
-        bb_alog_sms(conn, sms, "REJECTED - black-regex-listed SMS");
-        msg_destroy(sms);
-        return SMSCCONN_FAILED_REJECTED;
-    }
-    gw_rwlock_unlock(&white_black_list_lock);
-
-    /* fix sms type if not set already */
-    if (sms->sms.sms_type != report_mo)
+    /*
+     * We don't perform white/black-listing for DLRs.
+     * Fix sms type if not set already.
+     */
+    if (sms->sms.sms_type != report_mo) {
         sms->sms.sms_type = mo;
+
+        gw_rwlock_rdlock(&white_black_list_lock);
+        if (white_list_sender &&
+                numhash_find_number(white_list_sender, sms->sms.sender) < 1) {
+            gw_rwlock_unlock(&white_black_list_lock);
+            info(0, "Number <%s> is not in white-list, message discarded",
+                 octstr_get_cstr(sms->sms.sender));
+            bb_alog_sms(conn, sms, "REJECTED Receive SMS - not white-listed SMS");
+            msg_destroy(sms);
+            return SMSCCONN_FAILED_REJECTED;
+        }
+
+        if (white_list_sender_regex &&
+                gw_regex_match_pre(white_list_sender_regex, sms->sms.sender) == 0) {
+            gw_rwlock_unlock(&white_black_list_lock);
+            info(0, "Number <%s> is not in white-list, message discarded",
+                 octstr_get_cstr(sms->sms.sender));
+            bb_alog_sms(conn, sms, "REJECTED Receive SMS - not white-regex-listed SMS");
+            msg_destroy(sms);
+            return SMSCCONN_FAILED_REJECTED;
+        }
+
+        if (black_list_sender &&
+                numhash_find_number(black_list_sender, sms->sms.sender) == 1) {
+            gw_rwlock_unlock(&white_black_list_lock);
+            info(0, "Number <%s> is in black-list, message discarded",
+                 octstr_get_cstr(sms->sms.sender));
+            bb_alog_sms(conn, sms, "REJECTED Receive SMS - black-listed SMS");
+            msg_destroy(sms);
+            return SMSCCONN_FAILED_REJECTED;
+        }
+
+        if (black_list_sender_regex &&
+                gw_regex_match_pre(black_list_sender_regex, sms->sms.sender) == 0) {
+            gw_rwlock_unlock(&white_black_list_lock);
+            info(0, "Number <%s> is not in black-list, message discarded",
+                 octstr_get_cstr(sms->sms.sender));
+            bb_alog_sms(conn, sms, "REJECTED Receive SMS - black-regex-listed SMS");
+            msg_destroy(sms);
+            return SMSCCONN_FAILED_REJECTED;
+        }
+
+        if (white_list_receiver &&
+                numhash_find_number(white_list_receiver, sms->sms.receiver) < 1) {
+            gw_rwlock_unlock(&white_black_list_lock);
+            info(0, "Number <%s> is not in white-list-receiver, message discarded",
+                 octstr_get_cstr(sms->sms.receiver));
+            bb_alog_sms(conn, sms, "REJECTED Receive SMS - not white-listed SMS");
+            msg_destroy(sms);
+            return SMSCCONN_FAILED_REJECTED;
+        }
+
+        if (white_list_receiver_regex &&
+                gw_regex_match_pre(white_list_receiver_regex, sms->sms.receiver) == 0) {
+            gw_rwlock_unlock(&white_black_list_lock);
+            info(0, "Number <%s> is not in white-list-receiver, message discarded",
+                 octstr_get_cstr(sms->sms.receiver));
+            bb_alog_sms(conn, sms, "REJECTED Receive SMS - not white-regex-listed SMS");
+            msg_destroy(sms);
+            return SMSCCONN_FAILED_REJECTED;
+        }
+
+        if (black_list_receiver &&
+                numhash_find_number(black_list_receiver, sms->sms.receiver) == 1) {
+            gw_rwlock_unlock(&white_black_list_lock);
+            info(0, "Number <%s> is in black-list-receiver, message discarded",
+                 octstr_get_cstr(sms->sms.receiver));
+            bb_alog_sms(conn, sms, "REJECTED Receive SMS - black-listed SMS");
+            msg_destroy(sms);
+            return SMSCCONN_FAILED_REJECTED;
+        }
+
+        if (black_list_receiver_regex &&
+                gw_regex_match_pre(black_list_receiver_regex, sms->sms.receiver) == 0) {
+            gw_rwlock_unlock(&white_black_list_lock);
+            info(0, "Number <%s> is not in black-list-receiver, message discarded",
+                 octstr_get_cstr(sms->sms.receiver));
+            bb_alog_sms(conn, sms, "REJECTED Receive SMS - black-regex-listed SMS");
+            msg_destroy(sms);
+            return SMSCCONN_FAILED_REJECTED;
+        }
+        gw_rwlock_unlock(&white_black_list_lock);
+    }
 
     /* write to store (if enabled) */
     if (store_save(sms) == -1) {
@@ -562,17 +623,16 @@ long bb_smscconn_receive(SMSCConn *conn, Msg *sms)
 
 int bb_reload_smsc_groups()
 {
-    Cfg *cfg;
-
-    debug("bb.sms", 0, "Reloading groups list from disk");
-    cfg =  cfg_create(cfg_filename);
-    if (cfg_read(cfg) == -1) {
+    debug("bb.sms", 0, "Reloading smsc groups list from config resource");
+    cfg_destroy(cfg_reloaded);
+    cfg_reloaded = cfg_create(cfg_filename);
+    if (cfg_read(cfg_reloaded) == -1) {
         warning(0, "Error opening configuration file %s", octstr_get_cstr(cfg_filename));
         return -1;
     }
-    if (smsc_groups != NULL)
-        gwlist_destroy(smsc_groups, NULL);
-    smsc_groups = cfg_get_multi_group(cfg, octstr_imm("smsc"));
+    gwlist_destroy(smsc_groups, NULL);
+    smsc_groups = cfg_get_multi_group(cfg_reloaded, octstr_imm("smsc"));
+
     return 0;
 }
 
@@ -580,8 +640,6 @@ int bb_reload_smsc_groups()
 /*---------------------------------------------------------------------
  * Other functions
  */
-
-
 
 /* function to route outgoing SMS'es from delay-list
  * use some nice magics to route them to proper SMSC
@@ -668,6 +726,72 @@ static void sms_router(void *arg)
 }
 
 
+#define OCTSTR(os)  octstr_imm(#os)
+
+static int cmp_conn_grp_checksum(void *a, void *b)
+{
+	int ret;
+	SMSCConn *conn = a;
+    Octstr *os;
+
+    os = cfg_get_group_checksum((CfgGroup*)b,
+            NULL
+    );
+
+	ret = (octstr_compare(conn->chksum, os) == 0);
+	octstr_destroy(os);
+
+	return ret;
+}
+
+
+static int cmp_rout_grp_checksum(void *a, void *b)
+{
+	int ret;
+	SMSCConn *conn = a;
+	Octstr *os;
+
+	os = cfg_get_group_checksum((CfgGroup*)b,
+		    OCTSTR(denied-smsc-id),
+		    OCTSTR(allowed-smsc-id),
+		    OCTSTR(preferred-smsc-id),
+		    OCTSTR(allowed-prefix),
+		    OCTSTR(denied-prefix),
+		    OCTSTR(preferred-prefix),
+		    OCTSTR(unified-prefix),
+		    OCTSTR(reroute),
+		    OCTSTR(reroute-smsc-id),
+		    OCTSTR(reroute-receiver),
+		    OCTSTR(reroute-dlr),
+		    OCTSTR(allowed-smsc-id-regex),
+		    OCTSTR(denied-smsc-id-regex),
+		    OCTSTR(preferred-smsc-id-regex),
+		    OCTSTR(allowed-prefix-regex),
+		    OCTSTR(denied-prefix-regex),
+		    OCTSTR(preferred-prefix-regex),
+		    NULL
+	);
+
+	ret = (octstr_compare(conn->chksum_conn, os) == 0);
+	octstr_destroy(os);
+
+	return ret;
+}
+
+#undef OCTSTR
+
+
+static int cmp_conn_grp_id(void *a, void *b)
+{
+	int ret;
+	SMSCConn *conn = a;
+	Octstr *os = cfg_get((CfgGroup*)b, octstr_imm("smsc-id"));
+
+	ret = (os && octstr_compare(conn->id, os) == 0);
+	octstr_destroy(os);
+
+    return ret;
+}
 
 
 /*-------------------------------------------------------------
@@ -680,9 +804,12 @@ int smsc2_start(Cfg *cfg)
     CfgGroup *grp;
     SMSCConn *conn;
     Octstr *os;
-    int i;
+    int i, j, m;
 
     if (smsc_running) return -1;
+
+    /* at start-up time there is no reloaded config */
+    cfg_reloaded = NULL;
 
     /* create split sms counter */
     split_msg_counter = counter_create();
@@ -695,28 +822,68 @@ int smsc2_start(Cfg *cfg)
     unified_prefix = cfg_get(grp, octstr_imm("unified-prefix"));
 
     gw_rwlock_init_static(&white_black_list_lock);
-    white_list = black_list = NULL;
-    white_list_url = black_list_url = NULL;
-    white_list_url = cfg_get(grp, octstr_imm("white-list"));
-    if (white_list_url != NULL) {
-        if ((white_list = numhash_create(octstr_get_cstr(white_list_url))) == NULL)
+    white_list_sender = black_list_sender = NULL;
+    white_list_sender_url = black_list_sender_url = NULL;
+    if ((white_list_sender_url = cfg_get(grp, octstr_imm("white-list"))) != NULL)   /* TODO deprecated, remove */
+        warning(0, "Option 'white-list' is deprecated! Please use 'white-list-sender' instead!");
+    else
+        white_list_sender_url = cfg_get(grp, octstr_imm("white-list-sender"));
+    if (white_list_sender_url != NULL) {
+        if ((white_list_sender = numhash_create(octstr_get_cstr(white_list_sender_url))) == NULL)
             panic(0, "Could not get white-list at URL <%s>", 
-                  octstr_get_cstr(white_list_url));
+                  octstr_get_cstr(white_list_sender_url));
     }
-    if ((os = cfg_get(grp, octstr_imm("white-list-regex"))) != NULL) {
-        if ((white_list_regex = gw_regex_comp(os, REG_EXTENDED)) == NULL)
+    if ((os = cfg_get(grp, octstr_imm("white-list-regex"))) != NULL)                /* TODO deprecated, remove */
+        warning(0, "Option 'white-list-regex' is deprecated! Please use 'white-list-sender-regex' instead!");
+    else
+        os = cfg_get(grp, octstr_imm("white-list-sender-regex"));
+    if (os != NULL) {
+        if ((white_list_sender_regex = gw_regex_comp(os, REG_EXTENDED)) == NULL)
             panic(0, "Could not compile pattern '%s'", octstr_get_cstr(os));
         octstr_destroy(os);
     }
     
-    black_list_url = cfg_get(grp, octstr_imm("black-list"));
-    if (black_list_url != NULL) {
-        if ((black_list = numhash_create(octstr_get_cstr(black_list_url))) == NULL)
+    if ((black_list_sender_url = cfg_get(grp, octstr_imm("black-list"))) != NULL)   /* TODO deprecated, remove */
+        warning(0, "Option 'black-list' is deprecated! Please use 'black-list-sender' instead!");
+    else
+        black_list_sender_url = cfg_get(grp, octstr_imm("black-list-sender"));
+    if (black_list_sender_url != NULL) {
+        if ((black_list_sender = numhash_create(octstr_get_cstr(black_list_sender_url))) == NULL)
             panic(0, "Could not get black-list at URL <%s>", 
-                  octstr_get_cstr(black_list_url));
+                  octstr_get_cstr(black_list_sender_url));
     }
-    if ((os = cfg_get(grp, octstr_imm("black-list-regex"))) != NULL) {
-        if ((black_list_regex = gw_regex_comp(os, REG_EXTENDED)) == NULL)
+    if ((os = cfg_get(grp, octstr_imm("black-list-regex"))) != NULL)                /* TODO deprecated, remove */
+        warning(0, "Option 'black-list-regex' is deprecated! Please use 'black-list-sender-regex' instead!");
+    else
+        os = cfg_get(grp, octstr_imm("black-list-sender-regex"));
+    if (os != NULL) {
+        if ((black_list_sender_regex = gw_regex_comp(os, REG_EXTENDED)) == NULL)
+            panic(0, "Could not compile pattern '%s'", octstr_get_cstr(os));
+        octstr_destroy(os);
+    }
+
+    white_list_receiver = black_list_receiver = NULL;
+    white_list_receiver_url = black_list_receiver_url = NULL;
+    white_list_receiver_url = cfg_get(grp, octstr_imm("white-list-receiver"));
+    if (white_list_receiver_url != NULL) {
+        if ((white_list_receiver = numhash_create(octstr_get_cstr(white_list_receiver_url))) == NULL)
+            panic(0, "Could not get white-list-receiver at URL <%s>",
+                  octstr_get_cstr(white_list_receiver_url));
+    }
+    if ((os = cfg_get(grp, octstr_imm("white-list-receiver-regex"))) != NULL) {
+        if ((white_list_receiver_regex = gw_regex_comp(os, REG_EXTENDED)) == NULL)
+            panic(0, "Could not compile pattern '%s'", octstr_get_cstr(os));
+        octstr_destroy(os);
+    }
+
+    black_list_receiver_url = cfg_get(grp, octstr_imm("black-list-receiver"));
+    if (black_list_receiver_url != NULL) {
+        if ((black_list_receiver = numhash_create(octstr_get_cstr(black_list_receiver_url))) == NULL)
+            panic(0, "Could not get black-list-receiver at URL <%s>",
+                  octstr_get_cstr(black_list_receiver_url));
+    }
+    if ((os = cfg_get(grp, octstr_imm("black-list-receiver-regex"))) != NULL) {
+        if ((black_list_receiver_regex = gw_regex_comp(os, REG_EXTENDED)) == NULL)
             panic(0, "Could not compile pattern '%s'", octstr_get_cstr(os));
         octstr_destroy(os);
     }
@@ -751,10 +918,14 @@ int smsc2_start(Cfg *cfg)
     gwlist_add_producer(smsc_list);
     for (i = 0; i < gwlist_len(smsc_groups) && 
         (grp = gwlist_get(smsc_groups, i)) != NULL; i++) {
-        conn = smscconn_create(grp, 1); 
-        if (conn == NULL)
-            panic(0, "Cannot start with SMSC connection failing");
-        gwlist_append(smsc_list, conn);
+        /* multiple instances for the same group? */
+        m = smscconn_instances(grp);
+        for (j = 0; j < m; j++) {
+            conn = smscconn_create(grp, 1);
+            if (conn == NULL)
+                panic(0, "Cannot start with SMSC connection failing");
+            gwlist_append(smsc_list, conn);
+        }
     }
     gwlist_remove_producer(smsc_list);
     
@@ -992,29 +1163,55 @@ int smsc2_reload_lists(void)
     Numhash *tmp;
     int rc = 1;
 
-    if (white_list_url != NULL) {
-        tmp = numhash_create(octstr_get_cstr(white_list_url));
-        if (white_list == NULL) {
+    if (white_list_sender_url != NULL) {
+        tmp = numhash_create(octstr_get_cstr(white_list_sender_url));
+        if (white_list_sender == NULL) {
             error(0, "Unable to reload white_list."),
             rc = -1;
         } else {
         	gw_rwlock_wrlock(&white_black_list_lock);
-        	numhash_destroy(white_list);
-        	white_list = tmp;
+        	numhash_destroy(white_list_sender);
+        	white_list_sender = tmp;
         	gw_rwlock_unlock(&white_black_list_lock);
         }
     }
 
-    if (black_list_url != NULL) {
-        tmp = numhash_create(octstr_get_cstr(black_list_url));
-        if (black_list == NULL) {
+    if (black_list_sender_url != NULL) {
+        tmp = numhash_create(octstr_get_cstr(black_list_sender_url));
+        if (black_list_sender == NULL) {
             error(0, "Unable to reload black_list");
             rc = -1;
         } else {
         	gw_rwlock_wrlock(&white_black_list_lock);
-        	numhash_destroy(black_list);
-        	black_list = tmp;
+        	numhash_destroy(black_list_sender);
+        	black_list_sender = tmp;
         	gw_rwlock_unlock(&white_black_list_lock);
+        }
+    }
+
+    if (white_list_receiver_url != NULL) {
+        tmp = numhash_create(octstr_get_cstr(white_list_receiver_url));
+        if (white_list_receiver == NULL) {
+            error(0, "Unable to reload white_list."),
+            rc = -1;
+        } else {
+            gw_rwlock_wrlock(&white_black_list_lock);
+            numhash_destroy(white_list_receiver);
+            white_list_receiver = tmp;
+            gw_rwlock_unlock(&white_black_list_lock);
+        }
+    }
+
+    if (black_list_receiver_url != NULL) {
+        tmp = numhash_create(octstr_get_cstr(black_list_receiver_url));
+        if (black_list_receiver == NULL) {
+            error(0, "Unable to reload black_list");
+            rc = -1;
+        } else {
+            gw_rwlock_wrlock(&white_black_list_lock);
+            numhash_destroy(black_list_receiver);
+            black_list_sender = tmp;
+            gw_rwlock_unlock(&white_black_list_lock);
         }
     }
 
@@ -1118,14 +1315,22 @@ void smsc2_cleanup(void)
     gw_rwlock_unlock(&smsc_list_lock);
     gwlist_destroy(smsc_groups, NULL);
     octstr_destroy(unified_prefix);    
-    numhash_destroy(white_list);
-    numhash_destroy(black_list);
-    octstr_destroy(white_list_url);
-    octstr_destroy(black_list_url);
-    if (white_list_regex != NULL)
-        gw_regex_destroy(white_list_regex);
-    if (black_list_regex != NULL)
-        gw_regex_destroy(black_list_regex);
+    numhash_destroy(white_list_sender);
+    numhash_destroy(black_list_sender);
+    octstr_destroy(white_list_sender_url);
+    octstr_destroy(black_list_sender_url);
+    if (white_list_sender_regex != NULL)
+        gw_regex_destroy(white_list_sender_regex);
+    if (black_list_sender_regex != NULL)
+        gw_regex_destroy(black_list_sender_regex);
+    numhash_destroy(white_list_receiver);
+    numhash_destroy(black_list_receiver);
+    octstr_destroy(white_list_receiver_url);
+    octstr_destroy(black_list_receiver_url);
+    if (white_list_receiver_regex != NULL)
+        gw_regex_destroy(white_list_receiver_regex);
+    if (black_list_receiver_regex != NULL)
+        gw_regex_destroy(black_list_receiver_regex);
     /* destroy msg split counter */
     counter_destroy(split_msg_counter);
     gw_rwlock_destroy(&smsc_list_lock);
@@ -1251,6 +1456,7 @@ Octstr *smsc2_status(int status_type)
                 break;
             default:
                 sprintf(tmp3, "unknown");
+                break;
         }
 
         if (status_type == BBSTATUS_XML)
@@ -1293,9 +1499,6 @@ Octstr *smsc2_status(int status_type)
                 lb);
     }
 
-
-
-
     gw_rwlock_unlock(&smsc_list_lock);
 
     if (para)
@@ -1305,6 +1508,184 @@ Octstr *smsc2_status(int status_type)
     else
         octstr_append_cstr(tmp, "\n\n");
     return tmp;
+}
+
+
+int smsc2_graceful_restart(void)
+{
+    CfgGroup *grp;
+    SMSCConn *conn;
+    List *keep, *add, *remove;
+    List *l;
+    int i, m;
+
+    if (!smsc_running)
+        return -1;
+
+    gw_rwlock_wrlock(&smsc_list_lock);
+
+    /* load the smsc groups from the config resource */
+    if (bb_reload_smsc_groups() != 0) {
+        gw_rwlock_unlock(&smsc_list_lock);
+        return -1;
+    }
+
+    /* List of SMSCConn that we keep running */
+    keep = gwlist_create();
+
+    /* List of CfgGroup that we will add */
+    add = gwlist_create();
+
+    /* List of SMSCConnn that we will shutdown */
+    remove = gwlist_create();
+
+    /*
+     * Loop through the loaded smsc groups
+     */
+    for (i = 0; i < gwlist_len(smsc_groups) &&
+        (grp = gwlist_get(smsc_groups, i)) != NULL; i++) {
+        /*
+         * 1st check: Search for the same md5 hash of the whole group.
+         * If we find it, then this group is already running, and no
+         * routing information has changed, bail out.
+         */
+        if ((l = gwlist_search_all(smsc_list, grp, cmp_conn_grp_checksum)) != NULL) {
+            while ((conn = gwlist_extract_first(l)) != NULL) {
+                gwlist_append(keep, conn);
+            }
+            gwlist_destroy(l, NULL);
+            continue;
+        }
+        /*
+         * 2nd check: Search for the same md5 hash minus the routing
+         * information. If we find it, then this group is already running
+         * and the routing information changed, we'll apply only the new
+         * routing information.
+         */
+        if ((l = gwlist_search_all(smsc_list, grp, cmp_rout_grp_checksum)) != NULL) {
+            while ((conn = gwlist_extract_first(l)) != NULL) {
+                gwlist_append(keep, conn);
+                smscconn_reconfig(conn, grp);
+                info(0, "Re-configured routing for smsc-id `%s'.", octstr_get_cstr(conn->id));
+            }
+            gwlist_destroy(l, NULL);
+            continue;
+        }
+        /*
+         * 3rd check: if the smsc-id is NOT in the running list, then
+         * this is a new group, add it. If the smsc-id IS found, then
+         * mark it/them to be removed, and add the new group.
+         */
+        if ((l = gwlist_search_all(smsc_list, grp, cmp_conn_grp_id)) == NULL) {
+        	gwlist_append(add, grp);
+        	continue;
+        } else {
+        	while ((conn = gwlist_extract_first(l)) != NULL) {
+        		/* add them to the remove list only
+        		 * if they are not yet present inside. */
+        		if (gwlist_search_equal(remove, conn) != -1)
+        			gwlist_append(remove, conn);
+        	}
+        	gwlist_destroy(l, NULL);
+        	gwlist_append(add, grp);
+        	continue;
+        }
+    }
+
+    /*
+     * TODO Effectively a change in the 'instances' multiplier will result in a
+     * disconnect of all running instances, and re-connecting the number of
+     * configured instances. The reason for this is that the change in the
+     * 'instances' value causes the md5 hash to be different for that connection.
+     * We MAY exclude the 'instances' directive from the while md5 checksum, this
+     * makes the down-grading easier, allowing the rest to keep running. But the
+     * up-grading is more difficult, since we can't use the 'add' list here, it
+     * would create too much instances.
+     */
+
+    /*
+     * We may have running smsc-ids now, that haven't been
+     * re-loaded from the new config, hence add them to be removed.
+     */
+    for (i = 0; i < gwlist_len(smsc_list) &&
+        (conn = gwlist_get(smsc_list, i)) != NULL; i++) {
+    	/* if this is already in the remove list, bail out. */
+    	if (gwlist_search_equal(remove, conn) != -1)
+    		continue;
+    	/* if this is in the keep list, bail out. */
+    	if (gwlist_search_equal(keep, conn) != -1)
+    		continue;
+    	/* mark it to be removed */
+    	gwlist_append(remove, conn);
+    }
+    gwlist_destroy(keep, NULL);
+
+    /*
+     * Stop any connections from the remove list.
+     *
+     * The smscconn_shutdown() only initiates the shutdown,
+     * it is not guaranteed that the SMSC connection is stopped
+     * and the status is SMSCCONN_DEAD when we return from the
+     * function call. Therefore we pass the connection to a
+     * retry list, in order to cleanly destroy all connection
+     * structures that have been stopped and reached SMSSCONN_DEAD.
+     */
+    l = gwlist_create();
+    gwlist_add_producer(smsc_list);
+    while ((conn = gwlist_extract_first(remove)) != NULL) {
+    	if ((i = gwlist_search_equal(smsc_list, conn)) != -1) {
+            gwlist_delete(smsc_list, i, 1);
+            smscconn_shutdown(conn, 0);
+            /* if smsc is still in shutdown, then add to retry list */
+            if (smscconn_destroy(conn) == -1)
+            	gwlist_append(l, conn);
+    	}
+    }
+    gwlist_remove_producer(smsc_list);
+    gwlist_destroy(remove, NULL);
+
+    /*
+     * Start any connections from the add list.
+     */
+    gwlist_add_producer(smsc_list);
+    while ((grp = gwlist_extract_first(add)) != NULL) {
+        /* multiple instances for the same group? */
+        m = smscconn_instances(grp);
+        for (i = 0; i < m; i++) {
+            conn = smscconn_create(grp, 1);
+            if (conn != NULL) {
+                gwlist_append(smsc_list, conn);
+                if (conn->dead_start) {
+                    /* Shutdown connection if it's not configured to connect at start-up time */
+                    smscconn_shutdown(conn, 0);
+                } else {
+                    smscconn_start(conn);
+                }
+            }
+        }
+    }
+    gwlist_remove_producer(smsc_list);
+    gwlist_destroy(add, NULL);
+
+    gw_rwlock_unlock(&smsc_list_lock);
+
+    /* wake-up the router */
+    if (router_thread >= 0)
+        gwthread_wakeup(router_thread);
+
+    /*
+     * We may still have pending connections in the retry list
+     * that haven't been destroyed yet.
+     */
+    while ((conn = gwlist_extract_first(l)) != NULL) {
+    	if (smscconn_destroy(conn) == -1) {
+    		gwlist_append(l, conn);
+    		gwthread_sleep(2);
+    	}
+    }
+    gwlist_destroy(l, NULL);
+
+    return 0;
 }
 
 
@@ -1320,7 +1701,7 @@ Octstr *smsc2_status(int status_type)
  */
 long smsc2_rout(Msg *msg, int resend)
 {
-    StatusInfo info;
+    StatusInfo stat;
     SMSCConn *conn, *best_preferred, *best_ok;
     long bp_load, bo_load;
     int i, s, ret, bad_found, full_found;
@@ -1341,9 +1722,75 @@ long smsc2_rout(Msg *msg, int resend)
 
     /* unify prefix of receiver, in case of it has not been
      * already done */
-
     uf = unified_prefix ? octstr_get_cstr(unified_prefix) : NULL;
     normalize_number(uf, &(msg->sms.receiver));
+
+    /* check for white/back-listed sender/receiver */
+    gw_rwlock_rdlock(&white_black_list_lock);
+    if (white_list_sender && numhash_find_number(white_list_sender, msg->sms.sender) < 1) {
+        gw_rwlock_unlock(&white_black_list_lock);
+        info(0, "Number <%s> is not in white-list, message rejected",
+             octstr_get_cstr(msg->sms.sender));
+        bb_smscconn_send_failed(NULL, msg_duplicate(msg), SMSCCONN_FAILED_REJECTED, octstr_create("sender not in white-list"));
+        return SMSCCONN_FAILED_REJECTED;
+    }
+
+    if (white_list_sender_regex && gw_regex_match_pre(white_list_sender_regex, msg->sms.sender) == 0) {
+        gw_rwlock_unlock(&white_black_list_lock);
+        info(0, "Number <%s> is not in white-list, message rejected",
+             octstr_get_cstr(msg->sms.sender));
+        bb_smscconn_send_failed(NULL, msg_duplicate(msg), SMSCCONN_FAILED_REJECTED, octstr_create("sender not in white-list"));
+        return SMSCCONN_FAILED_REJECTED;
+    }
+
+    if (black_list_sender && numhash_find_number(black_list_sender, msg->sms.sender) == 1) {
+        gw_rwlock_unlock(&white_black_list_lock);
+        info(0, "Number <%s> is in black-list, message rejected",
+             octstr_get_cstr(msg->sms.sender));
+        bb_smscconn_send_failed(NULL, msg_duplicate(msg), SMSCCONN_FAILED_REJECTED, octstr_create("sender in black-list"));
+        return SMSCCONN_FAILED_REJECTED;
+    }
+
+    if (black_list_sender_regex && gw_regex_match_pre(black_list_sender_regex, msg->sms.sender) == 0) {
+        gw_rwlock_unlock(&white_black_list_lock);
+        info(0, "Number <%s> is not in black-list, message rejected",
+             octstr_get_cstr(msg->sms.sender));
+        bb_smscconn_send_failed(NULL, msg_duplicate(msg), SMSCCONN_FAILED_REJECTED, octstr_create("sender in black-list"));
+        return SMSCCONN_FAILED_REJECTED;
+    }
+
+    if (white_list_receiver && numhash_find_number(white_list_receiver, msg->sms.receiver) < 1) {
+        gw_rwlock_unlock(&white_black_list_lock);
+        info(0, "Number <%s> is not in white-list-receiver, message rejected",
+             octstr_get_cstr(msg->sms.receiver));
+        bb_smscconn_send_failed(NULL, msg_duplicate(msg), SMSCCONN_FAILED_REJECTED, octstr_create("receiver not in white-list"));
+        return SMSCCONN_FAILED_REJECTED;
+    }
+
+    if (white_list_receiver_regex && gw_regex_match_pre(white_list_receiver_regex, msg->sms.receiver) == 0) {
+        gw_rwlock_unlock(&white_black_list_lock);
+        info(0, "Number <%s> is not in white-list-receiver, message rejected",
+             octstr_get_cstr(msg->sms.receiver));
+        bb_smscconn_send_failed(NULL, msg_duplicate(msg), SMSCCONN_FAILED_REJECTED, octstr_create("receiver not in white-list"));
+        return SMSCCONN_FAILED_REJECTED;
+    }
+
+    if (black_list_receiver && numhash_find_number(black_list_receiver, msg->sms.receiver) == 1) {
+        gw_rwlock_unlock(&white_black_list_lock);
+        info(0, "Number <%s> is in black-list-receiver, message rejected",
+             octstr_get_cstr(msg->sms.receiver));
+        bb_smscconn_send_failed(NULL, msg_duplicate(msg), SMSCCONN_FAILED_REJECTED, octstr_create("receiver in black-list"));
+        return SMSCCONN_FAILED_REJECTED;
+    }
+
+    if (black_list_receiver_regex && gw_regex_match_pre(black_list_receiver_regex, msg->sms.receiver) == 0) {
+        gw_rwlock_unlock(&white_black_list_lock);
+        info(0, "Number <%s> is not in black-list-receiver, message rejected",
+             octstr_get_cstr(msg->sms.receiver));
+        bb_smscconn_send_failed(NULL, msg_duplicate(msg), SMSCCONN_FAILED_REJECTED, octstr_create("receiver in black-list"));
+        return SMSCCONN_FAILED_REJECTED;
+    }
+    gw_rwlock_unlock(&white_black_list_lock);
 
     /* select in which list to add this
      * start - from random SMSCConn, as they are all 'equal'
@@ -1377,8 +1824,8 @@ long smsc2_rout(Msg *msg, int resend)
     	for (i = 0; i < gwlist_len(smsc_list); i++) {
     		conn = gwlist_get(smsc_list,  (i+s) % gwlist_len(smsc_list));
 
-    		smscconn_info(conn, &info);
-    		queue_length += (info.queued > 0 ? info.queued : 0);
+    		smscconn_info(conn, &stat);
+    		queue_length += (stat.queued > 0 ? stat.queued : 0);
 
     		ret = smscconn_usable(conn,msg);
     		if (ret == -1)
@@ -1389,25 +1836,25 @@ long smsc2_rout(Msg *msg, int resend)
     			continue;
 
     		/* If connection is not currently answering ... */
-    		if (info.status != SMSCCONN_ACTIVE) {
+    		if (stat.status != SMSCCONN_ACTIVE) {
     			bad_found = 1;
     			continue;
     		}
     		/* check queue length */
-    		if (info.queued > max_queue) {
+    		if (stat.queued > max_queue) {
     			full_found = 1;
     			continue;
     		}
     		if (ret == 1) {          /* preferred */
-    			if (best_preferred == NULL || info.load < bp_load) {
+    			if (best_preferred == NULL || stat.load < bp_load) {
     				best_preferred = conn;
-    				bp_load = info.load;
+    				bp_load = stat.load;
     				continue;
     			}
     		}
-    		if (best_ok == NULL || info.load < bo_load) {
+    		if (best_ok == NULL || stat.load < bo_load) {
     			best_ok = conn;
-    			bo_load = info.load;
+    			bo_load = stat.load;
     		}
     	}
     	queue_length += gwlist_len(outgoing_sms);

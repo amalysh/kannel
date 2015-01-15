@@ -1,3 +1,64 @@
+2015-01-02  Stipe Tolj  <stolj at kannel.org>
+    * gw/smsc/http/generic.c: fix segfault when starting without specific
+      configuration directives for this type.
+      
+2014-12-19  Stipe Tolj  <stolj at kannel.org>
+    * gw/sms.c: add a TODO note in function extract_msgdata_part_by_coding()
+      that yields a GSM centric limitation in regards of character encoding
+      support. NLC.
+    * gw/smsc/smsc_smpp.c: use DCS handling functions to reduce code redundancy
+      on the MO side, and also support individual data_coding setting via
+      meta-data value.
+       
+2014-12-18  Stipe Tolj  <stolj at kannel.org>
+    * doc/userguide.xml: cleaning section "Fake messages" to include all types.
+    * gw/smsc/smsc_fake.c: add support for UDH + 7bit text, using types udh-data
+      and udh-text now.
+    * test/fakesmsc.c: adding reference for udh-data and udh-text types.
+    
+2014-12-18  Stipe Tolj  <stolj at kannel.org>
+    * test/fakesmsc.c: add missing usage output for type 'dlr-mask'.
+    
+2014-11-17  Stipe Tolj  <stolj at kannel.org>
+    * doc/userguide/userguide.xml: document the new graceful restarting.
+    * gw/bb_http.c: add new HTTP admin URI /graceful-restart.
+    * gw/bb_smscconn.c: implements graceful restarting of bearerbox.
+    * gw/bearebox.[ch]: signal SIGHUP handling for graceful restarting, and 
+      SIGUSR2 for pure log re-opening.
+    * gw/smscconn_p.h: add MD5 checksum variable for graceful restarting.
+    * gw/smscconn.[ch]: do MD5 calculation on parts of the config for change
+      detection.
+    * gwlib/cfg.[ch]: additions for MD5 calculation of the config parts.
+    This patchset 'gateway-graceful-restart.v5.diff' implements the soft/graceful
+    restarting of bearerbox. Where the process can be signaled via SIGHUP and
+    re-loads the SMSC configurations. Any config parts that are not modified
+    keep on running, and either SMSCs are re-connected or shutdown. In addition
+    re-configuration of routing config directives will cause NO re-connecting
+    of the corresponding SMSC groups.
+    [Msg-Id: <50822776.7040809@kannel.org>]
+    
+2014-11-12  Stipe Tolj  <stolj at kannel.org>
+    * gw/smsc/smsc_smpp.c: extend Alex's patchset to also support destination
+      TON/NPI setting via meta-data values.
+      
+2014-11-12  Stipe Tolj  <stolj at kannel.org>
+    * doc/userguide.xml: added 'instances' to 'group = smsc' context.
+    * gw/[bb_]smscconn.[ch]: allow multiple instances to be created via the
+      corresponding config directive.
+    * gwlib/cfg.def: added 'instances' to 'group = smsc' context.
+    [Msg-Id: <5452797C.2020207@kannel.org>]
+    
+2014-11-12  Stipe Tolj  <stolj at kannel.org>
+    * doc/userguide.xml: document new config directives and declare deprecates.
+    * gw/bb_boxc.c: handle SMSCCONN_FAILED_REJECTED response for routing.
+    * gw/bb_smscconn.c: crean the white/black listing handling to support 
+      sender/receiver side testing.
+    * gwlib/cfg.def: add new white/black listing config directives.
+    [Msg-Id: <54525E66.1020308@kannel.org>]
+    
+2014-11-11 Alexander Malysh <amalysh at kannel.org>
+    * gw/smsc/smsc_smpp.c: allow overwrite of source_addr ton/npi on message basis via meta_data
+
 2014-11-06 Alexander Malysh <amalysh at kannel.org>
     * gw/smsc/smpp_pdu.c: added check fo defined fields and print error only if it's unknown TLV
 
