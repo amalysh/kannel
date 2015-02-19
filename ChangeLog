@@ -1,3 +1,43 @@
+2015-02-19 Alexander Malysh <amalysh at kannel.org>
+    * gw/smsbox.c: fixed issue with XML MT request, <to> was not decided anymore. 
+
+2015-02-04  Stipe Tolj  <stolj at kannel.org>
+    * gwlib/log.c: don't dump the WARNING in log_thread_to() if there was no
+      attempt to open an SMSC specific log, i.e. no 'log-file' was set.
+      
+2015-01-29 Alexander Malysh <amalysh at kannel.org>
+	* doc/userguide/userguide.xml: added description for new log-format
+      config option.
+
+2015-01-29  Stipe Tolj  <stolj at kannel.org>
+    * gw/ota_compiler.c, gw/smsbox.c, gw/wap_push_[pap|si|sl]_compiler.c,
+      gw/wml_compiler.c, gwlib/xmlrpc.c: FreeBSD CURRENT messes up with 
+      __wchar_t typedef used heavily by libxml2, so we need to make sure the
+      internal types are included to fix the building on FreeBSD CURRENT.
+      
+2015-01-29  Stipe Tolj  <stolj at kannel.org>
+    * configure[.in]: fix openssl library detection via GCC's print-file-name
+      argument. We need to obey what $CC is set, not call the binary name 
+      directly. This broke the configure on FreeBSD CURRENT.
+      
+2015-01-28  Stipe Tolj  <stolj at kannel.org>
+    * gwlib/log.[ch]: fix segfault when calling log_thread_to() with -1 argument, due
+      to a failed log_open() call, i.e. permission denied. Since the unsigned int type
+      wrapps arround the if statement in the function yields and we address a random 
+      memory segment via the logfiles[] array, resulting in possible segfaults.
+      Now we also log a WARNING statement in case the thread specific log file could
+      not be opened to inform the user in the general/stdout log abou the fact.
+      
+2015-01-28  Stipe Tolj  <stolj at kannel.org>
+    * gw/smscconn.c: fixing bug #708 in function c:smscconn_usable(). We need
+      to bail out for connectioks with status SMSCCONN_ACTIVE_RECV, since those
+      can't be used for routing. Some source code reformating, NLC.
+      
+2015-01-19 Alexander Malysh <amalysh at kannel.org>
+    * gw/smsc/smpp_pdu.[ch], gw/smsc/smsc_smpp.c, gwlib/cfg.def:
+      added new PDU dump function that allow to dump in one line instead of multiline,
+      for better parsing. It can be switched with new log-format configuration option.
+
 2015-01-02  Stipe Tolj  <stolj at kannel.org>
     * gw/smsc/http/generic.c: fix segfault when starting without specific
       configuration directives for this type.
